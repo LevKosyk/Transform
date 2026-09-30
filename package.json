@@ -1,0 +1,277 @@
+{
+  "name": "devbox",
+  "displayName": "DevBox \u2014 Developer Toolbox",
+  "description": "JSON, JWT, Base64, timestamps, UUIDs and everyday developer utilities directly inside VS Code.",
+  "version": "1.0.0",
+  "publisher": "devbox-placeholder",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other",
+    "Formatters"
+  ],
+  "main": "./dist/extension.js",
+  "icon": "assets/icon.png",
+  "activationEvents": [],
+  "scripts": {
+    "build": "tsc --noEmit -p . && node -e \"require('node:fs').rmSync('dist', {recursive:true,force:true})\" && esbuild src/extension.ts --bundle --platform=node --format=cjs --target=node20 --external:vscode --outfile=dist/extension.js",
+    "watch": "tsc -w -p .",
+    "lint": "eslint src test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "package": "npm run build && vsce package --no-dependencies --allow-missing-repository --no-rewrite-relative-links"
+  },
+  "dependencies": {
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.36.0",
+    "@types/node": "^22.18.6",
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.6.0",
+    "esbuild": "^0.25.12",
+    "eslint": "^9.36.0",
+    "globals": "^16.4.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.44.0",
+    "vitest": "^3.2.4"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "devbox.smartAction",
+        "title": "Smart Action",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.formatJson",
+        "title": "Format JSON",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.minifyJson",
+        "title": "Minify JSON",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.validateJson",
+        "title": "Validate JSON",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.jsonToYaml",
+        "title": "JSON to YAML",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.yamlToJson",
+        "title": "YAML to JSON",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.jsonToTypescript",
+        "title": "JSON to TypeScript",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.decodeJwt",
+        "title": "Decode JWT",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.copyJwtPayload",
+        "title": "Copy JWT Payload",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.base64Encode",
+        "title": "Base64 Encode",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.base64Decode",
+        "title": "Base64 Decode",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.urlEncode",
+        "title": "URL Encode",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.urlDecode",
+        "title": "URL Decode",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.parseUrl",
+        "title": "Parse URL",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.parseQuery",
+        "title": "Parse Query Parameters",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.timestampToDate",
+        "title": "Timestamp to Date",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.copyIsoDate",
+        "title": "Copy ISO Date",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.dateToTimestamp",
+        "title": "Date to Timestamp",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.generateUuid",
+        "title": "Generate UUID v4",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.validateUuid",
+        "title": "Validate UUID",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.camelCase",
+        "title": "camelCase",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.pascalCase",
+        "title": "PascalCase",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.snakeCase",
+        "title": "snake_case",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.kebabCase",
+        "title": "kebab-case",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.constantCase",
+        "title": "CONSTANT_CASE",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.lowercase",
+        "title": "lowercase",
+        "category": "DevBox"
+      },
+      {
+        "command": "devbox.uppercase",
+        "title": "UPPERCASE",
+        "category": "DevBox"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "devbox.smartAction",
+        "key": "ctrl+shift+d",
+        "mac": "cmd+shift+d",
+        "when": "editorTextFocus"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "submenu": "devbox.editorMenu",
+          "group": "9_cutcopypaste",
+          "when": "editorHasSelection"
+        }
+      ],
+      "devbox.editorMenu": [
+        {
+          "command": "devbox.formatJson",
+          "group": "1_json@1"
+        },
+        {
+          "command": "devbox.minifyJson",
+          "group": "1_json@2"
+        },
+        {
+          "command": "devbox.jsonToYaml",
+          "group": "1_json@3"
+        },
+        {
+          "command": "devbox.jsonToTypescript",
+          "group": "1_json@4"
+        },
+        {
+          "command": "devbox.decodeJwt",
+          "group": "2_encoding@1"
+        },
+        {
+          "command": "devbox.base64Encode",
+          "group": "2_encoding@2"
+        },
+        {
+          "command": "devbox.base64Decode",
+          "group": "2_encoding@3"
+        },
+        {
+          "command": "devbox.urlEncode",
+          "group": "3_other@1"
+        },
+        {
+          "command": "devbox.urlDecode",
+          "group": "3_other@2"
+        },
+        {
+          "command": "devbox.timestampToDate",
+          "group": "3_other@3"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "DevBox",
+      "properties": {
+        "devbox.json.indentation": {
+          "type": "string",
+          "enum": [
+            "2",
+            "4",
+            "tab"
+          ],
+          "default": "2",
+          "description": "Indentation used for formatted JSON and generated TypeScript."
+        },
+        "devbox.smartAction.clipboardFallback": {
+          "type": "boolean",
+          "default": true,
+          "description": "Read the clipboard when no text is selected."
+        },
+        "devbox.defaultResultBehavior": {
+          "type": "string",
+          "enum": [
+            "replace",
+            "copy",
+            "ask"
+          ],
+          "default": "replace",
+          "description": "How transformation results are delivered."
+        }
+      }
+    },
+    "submenus": [
+      {
+        "id": "devbox.editorMenu",
+        "label": "DevBox"
+      }
+    ]
+  }
+}

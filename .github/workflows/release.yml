@@ -1,0 +1,115 @@
+name: Release DevBox
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: marketplace
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Verify release tag and publisher
+        shell: bash
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          publisher="$(node -p "require('./package.json').publisher")"
+          if [[ "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME must match package.json version v$version"
+            exit 1
+          fi
+          if [[ -z "$publisher" || "$publisher" == 'devbox-placeholder' ]]; then
+            echo '::error::Replace the placeholder publisher in package.json before releasing.'
+            exit 1
+          fi
+          echo "VSIX=devbox-$version.vsix" >> "$GITHUB_ENV"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check code
+        run: |
+          npm run lint
+          npm run format:check
+          npm test
+          npm run build
+
+      - name: Verify GIF links will be public
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "$(gh api "repos/$GITHUB_REPOSITORY" --jq .private)" != 'false' ]]; then
+            echo '::error::The repository must be public for README GIFs to appear in the Marketplace.'
+            exit 1
+          fi
+
+      - name: Package VSIX with public GIF links
+        shell: bash
+        run: |
+          npx vsce package \
+            --no-dependencies \
+            --allow-missing-repository \
+            --baseContentUrl "https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_SHA" \
+            --baseImagesUrl "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_SHA" \
+            --out "$VSIX"
+          test -s "$VSIX"
+
+      - name: Authenticate to Microsoft Entra ID
+        if: ${{ vars.AZURE_CLIENT_ID != '' && vars.AZURE_TENANT_ID != '' && vars.AZURE_SUBSCRIPTION_ID != '' }}
+        uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Publish to VS Code Marketplace
+        shell: bash
+        env:
+          USE_ENTRA_ID: ${{ vars.AZURE_CLIENT_ID != '' && vars.AZURE_TENANT_ID != '' && vars.AZURE_SUBSCRIPTION_ID != '' }}
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          if [[ "$USE_ENTRA_ID" == 'true' ]]; then
+            npx vsce publish --packagePath "$VSIX" --azure-credential --skip-duplicate
+          elif [[ -n "$VSCE_PAT" ]]; then
+            npx vsce publish --packagePath "$VSIX" --skip-duplicate
+          else
+            echo '::error::Configure Entra ID OIDC variables or the VSCE_PAT repository secret.'
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            if ! gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name' | grep -Fxq "$VSIX"; then
+              gh release upload "$GITHUB_REF_NAME" "$VSIX"
+            fi
+          else
+            gh release create "$GITHUB_REF_NAME" "$VSIX" \
+              --verify-tag \
+              --generate-notes \
+              --title "DevBox $GITHUB_REF_NAME"
+          fi
