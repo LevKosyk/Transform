@@ -8,6 +8,7 @@ import {
   type Indentation,
 } from "../transforms/json";
 import { jsonToTypescript } from "../transforms/typescript";
+import { jsonToSchema } from "../transforms/jsonSchema";
 import { decodeJwt, formatJwt } from "../transforms/jwt";
 import {
   base64Encode,
@@ -28,6 +29,7 @@ export type ActionId =
   | "jsonToYaml"
   | "yamlToJson"
   | "jsonToTypescript"
+  | "jsonToSchema"
   | "decodeJwt"
   | "copyJwtPayload"
   | "base64Encode"
@@ -62,6 +64,7 @@ export const actions: Action[] = [
   { id: "jsonToYaml", label: "JSON → YAML", structured: true },
   { id: "yamlToJson", label: "YAML → JSON", structured: true },
   { id: "jsonToTypescript", label: "JSON → TypeScript", structured: true },
+  { id: "jsonToSchema", label: "JSON → JSON Schema", structured: true },
   { id: "decodeJwt", label: "Decode JWT", structured: true },
   { id: "copyJwtPayload", label: "Copy Payload" },
   { id: "base64Encode", label: "Base64 Encode" },
@@ -107,6 +110,7 @@ const actionMap: Record<InputType, ActionId[]> = {
     "validateJson",
     "jsonToYaml",
     "jsonToTypescript",
+    "jsonToSchema",
   ],
   yaml: ["yamlToJson", ...stringActions],
   jwt: ["decodeJwt", "copyJwtPayload"],
@@ -124,6 +128,9 @@ export function relevantActions(type: InputType): Action[] {
 export type ExecuteOptions = {
   indentation?: Indentation;
   typescriptKind?: "interface" | "type";
+  typescriptRootName?: string;
+  typescriptExport?: boolean;
+  typescriptOptionalProperties?: boolean;
   dateFormat?: "local" | "utc" | "seconds" | "milliseconds";
 };
 export function executeAction(
@@ -147,9 +154,16 @@ export function executeAction(
           input,
           options.typescriptKind ?? "interface",
           indentation,
+          {
+            rootName: options.typescriptRootName,
+            export: options.typescriptExport,
+            optionalProperties: options.typescriptOptionalProperties,
+          },
         ),
         language: "typescript",
       };
+    case "jsonToSchema":
+      return { text: jsonToSchema(input, indentation), language: "json" };
     case "decodeJwt":
       return { text: formatJwt(input), language: "plaintext" };
     case "copyJwtPayload":

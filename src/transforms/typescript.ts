@@ -16,6 +16,11 @@ export function jsonToTypescript(
   input: string,
   kind: OutputKind = "interface",
   indentation: Indentation = "2",
+  options: {
+    rootName?: string;
+    export?: boolean;
+    optionalProperties?: boolean;
+  } = {},
 ): string {
   const root = parseJson(input);
   const definitions: string[] = [];
@@ -25,6 +30,8 @@ export function jsonToTypescript(
   const shapeCache = new WeakMap<object, string>();
   const indent = indentValue(indentation);
   const pad = typeof indent === "number" ? " ".repeat(indent) : indent;
+  const rootName = nameFor(options.rootName?.trim() || "Root");
+  const exported = options.export ? "export " : "";
   function unique(base: string): string {
     let name = base;
     let index = nextSuffix.get(base) ?? 2;
@@ -70,17 +77,19 @@ export function jsonToTypescript(
     const position = definitions.length;
     definitions.push("");
     const properties = Object.entries(value).map(
-      ([key, item]) => `${pad}${propertyName(key)}: ${typeOf(item, key)};`,
+      ([key, item]) =>
+        `${pad}${propertyName(key)}${options.optionalProperties ? "?" : ""}: ${typeOf(item, key)};`,
     );
     const block =
       kind === "interface"
-        ? `interface ${name} {\n${properties.join("\n")}\n}`
-        : `type ${name} = {\n${properties.join("\n")}\n};`;
+        ? `${exported}interface ${name} {\n${properties.join("\n")}\n}`
+        : `${exported}type ${name} = {\n${properties.join("\n")}\n};`;
     definitions[position] = block;
     return name;
   }
   if (root !== null && typeof root === "object" && !Array.isArray(root))
-    define(root as Record<string, unknown>, "Root");
-  else definitions.push(`type Root = ${typeOf(root, "Item")};`);
+    define(root as Record<string, unknown>, rootName);
+  else
+    definitions.push(`${exported}type ${rootName} = ${typeOf(root, "Item")};`);
   return definitions.join("\n\n");
 }

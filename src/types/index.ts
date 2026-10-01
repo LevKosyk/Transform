@@ -13,4 +13,4 @@ export interface TransformResult {
   text: string;
   language?: string;
 }
-export type ResultMode = "replace" | "insert" | "copy" | "open";
+export type ResultMode = "replace" | "insert" | "copy" | "open" | "preview";

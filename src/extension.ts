@@ -19,6 +19,9 @@ interface InputContext {
   editor?: vscode.TextEditor;
   source: "selection" | "clipboard" | "empty";
   selection?: vscode.Selection;
+  selections?: readonly vscode.Selection[];
+  selectedTexts?: readonly string[];
+  documentVersion?: number;
 }
 function settings() {
   return vscode.workspace.getConfiguration("selectcraft");
@@ -28,13 +31,22 @@ async function getInput(
   silent = false,
 ): Promise<InputContext | undefined> {
   const editor = vscode.window.activeTextEditor;
-  if (editor && !editor.selection.isEmpty)
+  if (editor && !editor.selection.isEmpty) {
+    const selections = editor.selections.filter(
+      (selection) => !selection.isEmpty,
+    );
     return {
       text: editor.document.getText(editor.selection),
       editor,
       selection: editor.selection,
+      selections,
+      selectedTexts: selections.map((selection) =>
+        editor.document.getText(selection),
+      ),
+      documentVersion: editor.document.version,
       source: "selection",
     };
+  }
   if (allowEmpty) return { text: "", editor, source: "empty" };
   if (settings().get<boolean>("smartAction.clipboardFallback", true)) {
     const text = await vscode.env.clipboard.readText();
@@ -53,7 +65,8 @@ function friendlyError(id: ActionId, error: unknown): string {
     id === "formatJson" ||
     id === "minifyJson" ||
     id === "jsonToYaml" ||
-    id === "jsonToTypescript"
+    id === "jsonToTypescript" ||
+    id === "jsonToSchema"
   )
     return `SelectCraft: Selected text is not valid JSON. ${message}`;
   return `SelectCraft: ${subject} failed. ${message}`;
@@ -62,10 +75,9 @@ async function chooseMode(
   context: InputContext,
   structured: boolean,
 ): Promise<ResultMode | undefined> {
-  const defaultBehavior = settings().get<"replace" | "copy" | "ask">(
-    "defaultResultBehavior",
-    "replace",
-  );
+  const defaultBehavior = settings().get<
+    "replace" | "copy" | "ask" | "preview"
+  >("defaultResultBehavior", "replace");
   if (context.source === "empty") return context.editor ? "insert" : "copy";
   if (context.source === "clipboard") {
     const choice = await vscode.window.showQuickPick(
@@ -80,10 +92,12 @@ async function chooseMode(
     );
     return choice?.mode;
   }
+  if (defaultBehavior === "preview") return "preview";
   if (structured || defaultBehavior === "ask") {
     const choice = await vscode.window.showQuickPick(
       [
         { label: "Replace Selection", mode: "replace" as ResultMode },
+        { label: "Preview Diff…", mode: "preview" as ResultMode },
         { label: "Open in New Editor", mode: "open" as ResultMode },
         { label: "Copy Result", mode: "copy" as ResultMode },
       ],
@@ -97,7 +111,9 @@ async function deliver(
   result: TransformResult,
   context: InputContext,
   mode: ResultMode,
+  replacementResults?: readonly TransformResult[],
 ): Promise<void> {
+  const previewing = mode === "preview";
   if (mode === "copy") {
     await vscode.env.clipboard.writeText(result.text);
     vscode.window.showInformationMessage(
@@ -119,16 +135,66 @@ async function deliver(
     );
     return;
   }
+  if (mode === "preview") {
+    const original = context.selectedTexts?.join("\n") ?? context.text;
+    const originalDocument = await vscode.workspace.openTextDocument({
+      content: original,
+      language: context.editor.document.languageId,
+    });
+    const resultDocument = await vscode.workspace.openTextDocument({
+      content: result.text,
+      language: result.language ?? context.editor.document.languageId,
+    });
+    await vscode.commands.executeCommand(
+      "vscode.diff",
+      originalDocument.uri,
+      resultDocument.uri,
+      "SelectCraft: Preview Transformation",
+    );
+    const choice = await vscode.window.showQuickPick(
+      ["Apply Result", "Copy Result", "Cancel"],
+      {
+        placeHolder: "Review the diff, then choose what to do with the result.",
+      },
+    );
+    if (choice === "Copy Result") {
+      await vscode.env.clipboard.writeText(result.text);
+      vscode.window.showInformationMessage(
+        "SelectCraft: Result copied to clipboard.",
+      );
+      return;
+    }
+    if (choice !== "Apply Result") return;
+    if (context.documentVersion !== context.editor.document.version) {
+      vscode.window.showWarningMessage(
+        "SelectCraft: The source document changed while the diff was open. Run the action again to apply the result.",
+      );
+      return;
+    }
+    mode = "replace";
+  }
+  const editor = previewing
+    ? await vscode.window.showTextDocument(context.editor.document, {
+        preview: false,
+      })
+    : context.editor;
   const range =
     mode === "replace" && context.selection
       ? context.selection
-      : new vscode.Range(
-          context.editor.selection.active,
-          context.editor.selection.active,
-        );
-  const success = await context.editor.edit((edit) =>
-    edit.replace(range, result.text),
-  );
+      : new vscode.Range(editor.selection.active, editor.selection.active);
+  const ranges =
+    mode === "replace" && context.selections?.length
+      ? context.selections
+      : [range];
+  const replacements =
+    replacementResults?.length === ranges.length
+      ? replacementResults
+      : ranges.map(() => result);
+  const success = await editor.edit((edit) => {
+    ranges.forEach((selection, index) =>
+      edit.replace(selection, replacements[index].text),
+    );
+  });
   if (!success)
     vscode.window.showErrorMessage("SelectCraft: Could not update the editor.");
 }
@@ -154,14 +220,17 @@ async function runAction(id: ActionId, context?: InputContext): Promise<void> {
   }
   const options: ExecuteOptions = {
     indentation: settings().get<Indentation>("json.indentation", "2"),
+    typescriptKind: settings().get<"interface" | "type">(
+      "typescript.kind",
+      "interface",
+    ),
+    typescriptRootName: settings().get<string>("typescript.rootName", "Root"),
+    typescriptExport: settings().get<boolean>("typescript.export", false),
+    typescriptOptionalProperties: settings().get<boolean>(
+      "typescript.optionalProperties",
+      false,
+    ),
   };
-  if (id === "jsonToTypescript") {
-    const choice = await vscode.window.showQuickPick(["Interface", "Type"], {
-      placeHolder: "Generate TypeScript as…",
-    });
-    if (!choice) return;
-    options.typescriptKind = choice === "Interface" ? "interface" : "type";
-  }
   let timestampFormats: ReturnType<typeof dateFormats> | undefined;
   if (id === "timestampToDate") {
     try {
@@ -190,14 +259,31 @@ async function runAction(id: ActionId, context?: InputContext): Promise<void> {
     options.dateFormat = choice.format;
   }
   try {
+    const selectedTexts = input.selectedTexts;
+    const multipleResults =
+      selectedTexts && selectedTexts.length > 1 && !action.structured
+        ? selectedTexts.map((text) => executeAction(id, text, options))
+        : undefined;
     const result = timestampFormats
       ? { text: timestampFormats[options.dateFormat ?? "utc"] }
-      : executeAction(id, input.text, options);
+      : (multipleResults?.[0] ?? executeAction(id, input.text, options));
+    const deliveredResult = multipleResults?.[0] ?? result;
     const mode =
       id === "copyJwtPayload" || id === "copyIsoDate"
         ? "copy"
         : await chooseMode(input, !!action.structured);
-    if (mode) await deliver(result, input, mode);
+    if (mode)
+      await deliver(
+        multipleResults?.length
+          ? {
+              ...deliveredResult,
+              text: multipleResults.map((item) => item.text).join("\n"),
+            }
+          : result,
+        input,
+        mode,
+        multipleResults,
+      );
   } catch (error) {
     output.appendLine(
       `[${new Date().toISOString()}] ${id}: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`,

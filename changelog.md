@@ -2,6 +2,14 @@
 
 All notable changes to SelectCraft are documented here.
 
+## Unreleased
+
+- Added JSON sample to JSON Schema generation using Draft 2020-12.
+- Added TypeScript generation settings for declaration kind, root name, exports, and optional properties.
+- Added an optional diff preview before applying transformation results.
+- Added integration coverage for Smart Action, insertion, new editor output, diff confirmation, and multiple selections.
+- Applied simple text transformations independently to every editor selection.
+
 ## 1.0.0
 
 Initial release.

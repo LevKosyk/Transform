@@ -7,6 +7,7 @@ import {
   yamlToJson,
 } from "../src/transforms/json";
 import { jsonToTypescript } from "../src/transforms/typescript";
+import { jsonToSchema } from "../src/transforms/jsonSchema";
 import { decodeJwt } from "../src/transforms/jwt";
 import {
   base64Encode,
@@ -26,6 +27,20 @@ describe("JSON and YAML", () => {
     expect(minifyJson('{\n "a": 1\n}')).toBe('{"a":1}');
     expect(validateJson("{bad}").valid).toBe(false);
     expect(validateJson('{"a":1}').valid).toBe(true);
+  });
+  it("generates a JSON Schema with nested and mixed array types", () => {
+    const schema = JSON.parse(
+      jsonToSchema('{"user":{"id":1},"values":[1,"two"],"empty":[]}'),
+    );
+    expect(schema.$schema).toBe("https://json-schema.org/draft/2020-12/schema");
+    expect(schema.required).toEqual(["user", "values", "empty"]);
+    expect(schema.properties.user.required).toEqual(["id"]);
+    expect(schema.properties.user.properties.id.type).toBe("integer");
+    expect(schema.properties.values.items.anyOf).toEqual([
+      { type: "integer" },
+      { type: "string" },
+    ]);
+    expect(schema.properties.empty.items).toEqual({});
   });
   it("converts between JSON and YAML", () => {
     const yaml = jsonToYaml('{"server":{"port":3000}}');
@@ -67,6 +82,21 @@ describe("TypeScript generation", () => {
     expect(output).toContain("mixed: (number | string)[];");
     expect(output).toContain("other: null;");
     expect(output).toContain("type Root = {");
+  });
+  it("supports root names, exports and optional properties", () => {
+    const output = jsonToTypescript(
+      '{"id":1,"display-name":"Ada"}',
+      "type",
+      "2",
+      {
+        rootName: "Api Response",
+        export: true,
+        optionalProperties: true,
+      },
+    );
+    expect(output).toContain("export type ApiResponse = {");
+    expect(output).toContain("id?: number;");
+    expect(output).toContain('"display-name"?: string;');
   });
 });
 describe("encoding and dates", () => {

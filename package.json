@@ -1,7 +1,7 @@
 {
   "name": "selectcraft",
-  "displayName": "SelectCraft — Developer Text Tools",
-  "description": "Format and validate JSON, convert JSON to YAML or TypeScript, decode JWT and Base64, and transform URLs, dates, UUIDs, and text in VS Code.",
+  "displayName": "SelectCraft — JSON, JWT & Text Tools",
+  "description": "Format JSON, generate JSON Schema and TypeScript, convert YAML, decode JWT and Base64, and transform URLs, dates, UUIDs, and text offline in VS Code.",
   "version": "1.0.0",
   "publisher": "levkosyk",
   "license": "MIT",
@@ -22,19 +22,26 @@
   ],
   "keywords": [
     "json formatter",
-    "json minify",
+    "format json",
+    "json pretty print",
+    "json minifier",
     "json validator",
     "json to yaml",
     "yaml to json",
     "json to typescript",
+    "typescript interface generator",
+    "json schema generator",
+    "json to json schema",
     "jwt decoder",
-    "base64 encode",
-    "base64 decode",
-    "url encode",
-    "url decode",
+    "jwt viewer",
+    "base64 encoder",
+    "base64 decoder",
+    "url encoder",
+    "url decoder",
     "url parser",
-    "query string",
-    "unix timestamp",
+    "query string parser",
+    "unix timestamp converter",
+    "timestamp converter",
     "date converter",
     "uuid generator",
     "uuid validator",
@@ -42,13 +49,8 @@
     "camel case",
     "snake case",
     "kebab case",
-    "text transform",
-    "developer tools",
-    "offline tools",
-    "vscode json formatter",
-    "json pretty print",
-    "vscode jwt decoder",
-    "typescript interface"
+    "vscode developer tools",
+    "developer text tools"
   ],
   "main": "./dist/extension.js",
   "icon": "assets/icon.png",
@@ -115,6 +117,11 @@
       {
         "command": "selectcraft.jsonToTypescript",
         "title": "JSON to TypeScript",
+        "category": "SelectCraft"
+      },
+      {
+        "command": "selectcraft.jsonToSchema",
+        "title": "JSON to JSON Schema",
         "category": "SelectCraft"
       },
       {
@@ -281,10 +288,35 @@
           "enum": [
             "replace",
             "copy",
-            "ask"
+            "ask",
+            "preview"
           ],
           "default": "replace",
-          "description": "How transformation results are delivered."
+          "description": "How transformation results are delivered. Preview opens a diff and asks before applying the result."
+        },
+        "selectcraft.typescript.kind": {
+          "type": "string",
+          "enum": [
+            "interface",
+            "type"
+          ],
+          "default": "interface",
+          "description": "Declaration style used when generating TypeScript from JSON."
+        },
+        "selectcraft.typescript.rootName": {
+          "type": "string",
+          "default": "Root",
+          "description": "Name for the root declaration generated from JSON."
+        },
+        "selectcraft.typescript.export": {
+          "type": "boolean",
+          "default": false,
+          "description": "Add the export keyword to generated TypeScript declarations."
+        },
+        "selectcraft.typescript.optionalProperties": {
+          "type": "boolean",
+          "default": false,
+          "description": "Mark every generated TypeScript property as optional."
         }
       }
     },
