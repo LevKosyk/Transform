@@ -1,6 +1,6 @@
 {
   "name": "selectcraft",
-  "displayName": "SelectCraft — JSON, JWT & Text Tools",
+  "displayName": "Transform — JSON, JWT & Text Tools",
   "description": "Format JSON, generate JSON Schema and TypeScript, convert YAML, decode JWT and Base64, and transform URLs, dates, UUIDs, and text offline in VS Code.",
   "version": "1.0.0",
   "publisher": "levkosyk",
@@ -87,147 +87,147 @@
       {
         "command": "selectcraft.smartAction",
         "title": "Smart Action",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.formatJson",
         "title": "Format JSON",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.minifyJson",
         "title": "Minify JSON",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.sortJsonKeys",
         "title": "Sort JSON Keys",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.validateJson",
         "title": "Validate JSON",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.jsonToYaml",
         "title": "JSON to YAML",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.yamlToJson",
         "title": "YAML to JSON",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.jsonToTypescript",
         "title": "JSON to TypeScript",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.jsonToSchema",
         "title": "JSON to JSON Schema",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.decodeJwt",
         "title": "Decode JWT",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.copyJwtPayload",
         "title": "Copy JWT Payload",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.base64Encode",
         "title": "Base64 Encode",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.base64Decode",
         "title": "Base64 Decode",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.urlEncode",
         "title": "URL Encode",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.urlDecode",
         "title": "URL Decode",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.parseUrl",
         "title": "Parse URL",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.parseQuery",
         "title": "Parse Query Parameters",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.timestampToDate",
         "title": "Timestamp to Date",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.copyIsoDate",
         "title": "Copy ISO Date",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.dateToTimestamp",
         "title": "Date to Timestamp",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.generateUuid",
         "title": "Generate UUID v4",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.validateUuid",
         "title": "Validate UUID",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.camelCase",
         "title": "camelCase",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.pascalCase",
         "title": "PascalCase",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.snakeCase",
         "title": "snake_case",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.kebabCase",
         "title": "kebab-case",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.constantCase",
         "title": "CONSTANT_CASE",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.lowercase",
         "title": "lowercase",
-        "category": "SelectCraft"
+        "category": "Transform"
       },
       {
         "command": "selectcraft.uppercase",
         "title": "UPPERCASE",
-        "category": "SelectCraft"
+        "category": "Transform"
       }
     ],
     "keybindings": [
@@ -271,7 +271,7 @@
       ]
     },
     "configuration": {
-      "title": "SelectCraft",
+      "title": "Transform",
       "properties": {
         "selectcraft.json.indentation": {
           "type": "string",
@@ -328,7 +328,7 @@
     "submenus": [
       {
         "id": "selectcraft.editorMenu",
-        "label": "SelectCraft"
+        "label": "Transform"
       }
     ]
   }

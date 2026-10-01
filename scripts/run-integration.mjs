@@ -30,7 +30,7 @@ try {
       `--user-data-dir=${resolve(temporary, "user")}`,
       `--extensions-dir=${resolve(temporary, "extensions")}`,
     ],
-    extensionTestsEnv: { SELECTCRAFT_TEST_RESULT: resultPath },
+    extensionTestsEnv: { TRANSFORM_TEST_RESULT: resultPath },
   });
   await access(resultPath).catch(() => {
     throw new Error("VS Code exited without running the integration tests.");

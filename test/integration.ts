@@ -238,10 +238,10 @@ export async function run(): Promise<void> {
     );
 
     console.log(
-      "SelectCraft integration tests passed (smart action, preview, TypeScript settings, JSON Schema, insertion, multiple selections, and clipboard).",
+      "Transform integration tests passed (smart action, preview, TypeScript settings, JSON Schema, insertion, multiple selections, and clipboard).",
     );
-    if (process.env.SELECTCRAFT_TEST_RESULT)
-      await writeFile(process.env.SELECTCRAFT_TEST_RESULT, "passed\n");
+    if (process.env.TRANSFORM_TEST_RESULT)
+      await writeFile(process.env.TRANSFORM_TEST_RESULT, "passed\n");
   } finally {
     await vscode.env.clipboard.writeText(originalClipboard);
     restoreQuickPicks();

@@ -92,7 +92,7 @@ async function getInput({
   }
   if (!silent)
     vscode.window.showInformationMessage(
-      "SelectCraft: Select text or copy text to the clipboard first.",
+      "Transform: Select text or copy text to the clipboard first.",
     );
   return undefined;
 }
@@ -107,8 +107,8 @@ function friendlyError(id: ActionId, error: unknown): string {
     id === "jsonToTypescript" ||
     id === "jsonToSchema"
   )
-    return `SelectCraft: Selected text is not valid JSON. ${message}`;
-  return `SelectCraft: ${subject} failed. ${message}`;
+    return `Transform: Selected text is not valid JSON. ${message}`;
+  return `Transform: ${subject} failed. ${message}`;
 }
 async function chooseMode(
   context: InputContext,
@@ -127,7 +127,7 @@ async function chooseMode(
           : []),
         { label: "Open Result in New Editor", mode: "open" as ResultMode },
       ],
-      { placeHolder: "Where should SelectCraft put the result?" },
+      { placeHolder: "Where should Transform put the result?" },
     );
     return choice?.mode;
   }
@@ -140,7 +140,7 @@ async function chooseMode(
         { label: "Open in New Editor", mode: "open" as ResultMode },
         { label: "Copy Result", mode: "copy" as ResultMode },
       ],
-      { placeHolder: "Where should SelectCraft put the result?" },
+      { placeHolder: "Where should Transform put the result?" },
     );
     return choice?.mode;
   }
@@ -156,7 +156,7 @@ async function deliver(
   if (mode === "copy") {
     await vscode.env.clipboard.writeText(result.text);
     vscode.window.showInformationMessage(
-      "SelectCraft: Result copied to clipboard.",
+      "Transform: Result copied to clipboard.",
     );
     return;
   }
@@ -170,7 +170,7 @@ async function deliver(
   }
   if (!context.editor) {
     vscode.window.showWarningMessage(
-      "SelectCraft: Open an editor to insert the result.",
+      "Transform: Open an editor to insert the result.",
     );
     return;
   }
@@ -188,7 +188,7 @@ async function deliver(
       "vscode.diff",
       originalDocument.uri,
       resultDocument.uri,
-      "SelectCraft: Preview Transformation",
+      "Transform: Preview Transformation",
     );
     const choice = await vscode.window.showQuickPick(
       ["Apply Result", "Copy Result", "Cancel"],
@@ -199,14 +199,14 @@ async function deliver(
     if (choice === "Copy Result") {
       await vscode.env.clipboard.writeText(result.text);
       vscode.window.showInformationMessage(
-        "SelectCraft: Result copied to clipboard.",
+        "Transform: Result copied to clipboard.",
       );
       return;
     }
     if (choice !== "Apply Result") return;
     if (context.documentVersion !== context.editor.document.version) {
       vscode.window.showWarningMessage(
-        "SelectCraft: The source document changed while the diff was open. Run the action again to apply the result.",
+        "Transform: The source document changed while the diff was open. Run the action again to apply the result.",
       );
       return;
     }
@@ -235,7 +235,7 @@ async function deliver(
     );
   });
   if (!success)
-    vscode.window.showErrorMessage("SelectCraft: Could not update the editor.");
+    vscode.window.showErrorMessage("Transform: Could not update the editor.");
 }
 async function runAction(id: ActionId, context?: InputContext): Promise<void> {
   const action = actionById(id);
@@ -253,16 +253,16 @@ async function runAction(id: ActionId, context?: InputContext): Promise<void> {
   if (id === "validateJson") {
     const result = validateJson(input.text);
     if (result.valid)
-      vscode.window.showInformationMessage("SelectCraft: JSON is valid.");
+      vscode.window.showInformationMessage("Transform: JSON is valid.");
     else
       vscode.window.showWarningMessage(
-        `SelectCraft: JSON is invalid${result.line ? ` at line ${result.line}, column ${result.column}` : ""}. ${result.message}`,
+        `Transform: JSON is invalid${result.line ? ` at line ${result.line}, column ${result.column}` : ""}. ${result.message}`,
       );
     return;
   }
   if (id === "validateUuid") {
     vscode.window.showInformationMessage(
-      `SelectCraft: UUID is ${validateUuid(input.text) ? "valid" : "invalid"}.`,
+      `Transform: UUID is ${validateUuid(input.text) ? "valid" : "invalid"}.`,
     );
     return;
   }
@@ -346,13 +346,13 @@ async function smartAction(): Promise<void> {
     if (editor) {
       const choice = await vscode.window.showQuickPick(
         [{ label: "Generate UUID v4", id: "generateUuid" as ActionId }],
-        { placeHolder: "SelectCraft" },
+        { placeHolder: "Transform" },
       );
       if (choice)
         await runAction(choice.id, { text: "", editor, source: "empty" });
     } else
       vscode.window.showInformationMessage(
-        "SelectCraft: Select text or copy text to the clipboard first.",
+        "Transform: Select text or copy text to the clipboard first.",
       );
     return;
   }
@@ -363,7 +363,7 @@ async function smartAction(): Promise<void> {
       id: action.id,
     })),
     {
-      placeHolder: `SelectCraft · ${type === "text" ? "Text" : type.toUpperCase()}`,
+      placeHolder: `Transform · ${type === "text" ? "Text" : type.toUpperCase()}`,
     },
   );
   if (choice) await runAction(choice.id, input);
@@ -376,12 +376,12 @@ async function safelyRun(task: () => Promise<void>): Promise<void> {
       `[${new Date().toISOString()}] Unexpected error: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`,
     );
     vscode.window.showErrorMessage(
-      "SelectCraft: An unexpected error occurred. See the SelectCraft output channel.",
+      "Transform: An unexpected error occurred. See the Transform output channel.",
     );
   }
 }
 export function activate(context: vscode.ExtensionContext): void {
-  output = vscode.window.createOutputChannel("SelectCraft");
+  output = vscode.window.createOutputChannel("Transform");
   context.subscriptions.push(output);
   context.subscriptions.push(
     vscode.commands.registerCommand("selectcraft.smartAction", () =>

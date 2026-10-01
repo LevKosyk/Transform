@@ -1,9 +1,10 @@
 # Changelog
 
-All notable changes to SelectCraft are documented here.
+All notable changes to Transform are documented here.
 
 ## Unreleased
 
+- Renamed the extension's display name and visible branding to Transform while retaining its existing extension identifier and settings namespace.
 - Added JSON sample to JSON Schema generation using Draft 2020-12.
 - Added TypeScript generation settings for declaration kind, root name, exports, and optional properties.
 - Added an optional diff preview before applying transformation results.

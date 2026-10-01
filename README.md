@@ -1,6 +1,6 @@
-# SelectCraft — JSON, JWT & Text Tools for VS Code
+# Transform — JSON, JWT & Text Tools for VS Code
 
-Format and validate JSON, generate TypeScript and JSON Schema, convert YAML, decode JWT and Base64, and transform URLs, dates, UUIDs, and text. SelectCraft runs locally and works offline.
+Format and validate JSON, generate TypeScript and JSON Schema, convert YAML, decode JWT and Base64, and transform URLs, dates, UUIDs, and text. Transform runs locally and works offline.
 
 **VS Code 1.90+** · **MIT License**
 
@@ -10,9 +10,9 @@ Format and validate JSON, generate TypeScript and JSON Schema, convert YAML, dec
 2. Press **⌘⇧D** (macOS) or **Ctrl+Shift+D** (Windows/Linux).
 3. Choose a relevant action to transform the selection.
 
-![Select JSON, choose a SelectCraft action, and see formatted JSON in VS Code](assets/smart.gif)
+![Select JSON, choose a Transform action, and see formatted JSON in VS Code](assets/smart.gif)
 
-You can also run **SelectCraft: Smart Action** from the Command Palette (**⌘⇧P** / **Ctrl+Shift+P**) or the right-click menu.
+You can also run **Transform: Smart Action** from the Command Palette (**⌘⇧P** / **Ctrl+Shift+P**) or the right-click menu.
 
 ## Developer tools
 
@@ -49,12 +49,12 @@ Generate a Draft 2020-12 schema from a JSON sample, including nested properties,
 - Set `selectcraft.defaultResultBehavior` to `"preview"` to compare changes and confirm before applying them.
 - With no selection, JSON/YAML commands use the matching open document; other commands can use clipboard fallback and offer copy, insert-at-cursor, or open-in-new-editor options. Disable clipboard fallback in Settings if you prefer.
 - Simple text actions apply independently to multiple selections. Validation leaves the editor unchanged.
-- SelectCraft has no account, telemetry, analytics, or external API calls. It processes selected text or clipboard content only when you invoke a command.
+- Transform has no account, telemetry, analytics, or external API calls. It processes selected text or clipboard content only when you invoke a command.
 - JWT decoding does not verify token signatures; decoded claims are not proof of authenticity.
 
 ## Settings
 
-Search for **SelectCraft** in VS Code Settings, or add values to `settings.json`:
+Search for **Transform** in VS Code Settings, or add values to `settings.json`:
 
 | Setting                                     | Default       | Purpose                                               |
 | ------------------------------------------- | ------------- | ----------------------------------------------------- |
