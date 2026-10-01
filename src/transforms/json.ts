@@ -16,6 +16,26 @@ export function formatJson(
 export function minifyJson(input: string): string {
   return JSON.stringify(parseJson(input));
 }
+function sortKeys(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sortKeys);
+  if (value !== null && typeof value === "object")
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+        .map(([key, item]) => [key, sortKeys(item)]),
+    );
+  return value;
+}
+export function sortJsonKeys(
+  input: string,
+  indentation: Indentation = "2",
+): string {
+  return JSON.stringify(
+    sortKeys(parseJson(input)),
+    null,
+    indentValue(indentation),
+  );
+}
 export function jsonToYaml(input: string): string {
   return getYaml().stringify(parseJson(input)).trimEnd();
 }

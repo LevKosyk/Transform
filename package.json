@@ -22,6 +22,7 @@
   ],
   "keywords": [
     "json formatter",
+    "sort json keys",
     "format json",
     "json pretty print",
     "json minifier",
@@ -41,7 +42,6 @@
     "url parser",
     "query string parser",
     "unix timestamp converter",
-    "timestamp converter",
     "date converter",
     "uuid generator",
     "uuid validator",
@@ -97,6 +97,11 @@
       {
         "command": "selectcraft.minifyJson",
         "title": "Minify JSON",
+        "category": "SelectCraft"
+      },
+      {
+        "command": "selectcraft.sortJsonKeys",
+        "title": "Sort JSON Keys",
         "category": "SelectCraft"
       },
       {

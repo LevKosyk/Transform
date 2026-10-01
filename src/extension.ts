@@ -17,19 +17,34 @@ let output: vscode.OutputChannel;
 interface InputContext {
   text: string;
   editor?: vscode.TextEditor;
-  source: "selection" | "clipboard" | "empty";
-  selection?: vscode.Selection;
-  selections?: readonly vscode.Selection[];
+  source: "selection" | "document" | "clipboard" | "empty";
+  selection?: vscode.Range;
+  selections?: readonly vscode.Range[];
   selectedTexts?: readonly string[];
   documentVersion?: number;
 }
+interface InputOptions {
+  allowEmpty?: boolean;
+  silent?: boolean;
+  useDocument?: "json" | "yaml" | "jsonOrYaml";
+}
+const jsonDocumentActions = new Set<ActionId>([
+  "formatJson",
+  "minifyJson",
+  "sortJsonKeys",
+  "validateJson",
+  "jsonToYaml",
+  "jsonToTypescript",
+  "jsonToSchema",
+]);
 function settings() {
   return vscode.workspace.getConfiguration("selectcraft");
 }
-async function getInput(
+async function getInput({
   allowEmpty = false,
   silent = false,
-): Promise<InputContext | undefined> {
+  useDocument,
+}: InputOptions = {}): Promise<InputContext | undefined> {
   const editor = vscode.window.activeTextEditor;
   if (editor && !editor.selection.isEmpty) {
     const selections = editor.selections.filter(
@@ -46,6 +61,29 @@ async function getInput(
       documentVersion: editor.document.version,
       source: "selection",
     };
+  }
+  const languageId = editor?.document.languageId;
+  const matchesDocumentLanguage =
+    useDocument === "jsonOrYaml"
+      ? languageId === "json" || languageId === "yaml"
+      : languageId === useDocument;
+  if (editor && useDocument && matchesDocumentLanguage) {
+    const text = editor.document.getText();
+    if (text.trim()) {
+      const selection = new vscode.Range(
+        editor.document.positionAt(0),
+        editor.document.positionAt(text.length),
+      );
+      return {
+        text,
+        editor,
+        selection,
+        selections: [selection],
+        selectedTexts: [text],
+        documentVersion: editor.document.version,
+        source: "document",
+      };
+    }
   }
   if (allowEmpty) return { text: "", editor, source: "empty" };
   if (settings().get<boolean>("smartAction.clipboardFallback", true)) {
@@ -64,6 +102,7 @@ function friendlyError(id: ActionId, error: unknown): string {
   if (
     id === "formatJson" ||
     id === "minifyJson" ||
+    id === "sortJsonKeys" ||
     id === "jsonToYaml" ||
     id === "jsonToTypescript" ||
     id === "jsonToSchema"
@@ -200,7 +239,16 @@ async function deliver(
 }
 async function runAction(id: ActionId, context?: InputContext): Promise<void> {
   const action = actionById(id);
-  const input = context ?? (await getInput(action.noInput));
+  const input =
+    context ??
+    (await getInput({
+      allowEmpty: action.noInput,
+      useDocument: jsonDocumentActions.has(id)
+        ? "json"
+        : id === "yamlToJson"
+          ? "yaml"
+          : undefined,
+    }));
   if (!input) return;
   if (id === "validateJson") {
     const result = validateJson(input.text);
@@ -292,7 +340,7 @@ async function runAction(id: ActionId, context?: InputContext): Promise<void> {
   }
 }
 async function smartAction(): Promise<void> {
-  const input = await getInput(false, true);
+  const input = await getInput({ silent: true, useDocument: "jsonOrYaml" });
   if (!input) {
     const editor = vscode.window.activeTextEditor;
     if (editor) {

@@ -16,16 +16,16 @@ You can also run **SelectCraft: Smart Action** from the Command Palette (**âŒ˜â‡
 
 ## Developer tools
 
-| Input  | Actions                                                                               |
-| ------ | ------------------------------------------------------------------------------------- |
-| JSON   | Format, minify, validate, convert to YAML or TypeScript, generate JSON Schema         |
-| YAML   | Convert to formatted JSON                                                             |
-| JWT    | Decode header and payload, inspect token dates, copy payload                          |
-| Base64 | Encode or decode UTF-8 text                                                           |
-| URL    | Encode/decode components, parse URLs and query parameters                             |
-| Dates  | Convert Unix seconds, milliseconds, and ISO 8601                                      |
-| UUID   | Generate UUID v4 or validate a UUID                                                   |
-| Text   | Convert camelCase, PascalCase, snake_case, kebab-case, CONSTANT_CASE, lower/UPPERCASE |
+| Input  | Actions                                                                                  |
+| ------ | ---------------------------------------------------------------------------------------- |
+| JSON   | Format, minify, sort keys, validate, convert to YAML or TypeScript, generate JSON Schema |
+| YAML   | Convert to formatted JSON                                                                |
+| JWT    | Decode header and payload, inspect token dates, copy payload                             |
+| Base64 | Encode or decode UTF-8 text                                                              |
+| URL    | Encode/decode components, parse URLs and query parameters                                |
+| Dates  | Convert Unix seconds, milliseconds, and ISO 8601                                         |
+| UUID   | Generate UUID v4 or validate a UUID                                                      |
+| Text   | Convert camelCase, PascalCase, snake_case, kebab-case, CONSTANT_CASE, lower/UPPERCASE    |
 
 All commands are available in the Command Palette. The context menu also includes Format JSON, Minify JSON, Decode JWT, and Base64 Decode.
 
@@ -41,11 +41,13 @@ Optional properties marks every property with `?`; it does not infer optionality
 
 Generate a Draft 2020-12 schema from a JSON sample, including nested properties, required keys, and array item types. Empty arrays have unconstrained `items`. The schema reflects the sample: listed keys are required and additional properties are disallowed. Review it before using it as an API contract.
 
+**Sort JSON Keys** alphabetizes object keys recursively and preserves array order.
+
 ## Results and privacy
 
 - Selected text is replaced by default. Structured results also offer **Preview Diff**, **Open in New Editor**, and **Copy Result**.
 - Set `selectcraft.defaultResultBehavior` to `"preview"` to compare changes and confirm before applying them.
-- With no selection, clipboard fallback offers copy, insert-at-cursor, or open-in-new-editor options. Disable it in Settings if you prefer.
+- With no selection, JSON/YAML commands use the matching open document; other commands can use clipboard fallback and offer copy, insert-at-cursor, or open-in-new-editor options. Disable clipboard fallback in Settings if you prefer.
 - Simple text actions apply independently to multiple selections. Validation leaves the editor unchanged.
 - SelectCraft has no account, telemetry, analytics, or external API calls. It processes selected text or clipboard content only when you invoke a command.
 - JWT decoding does not verify token signatures; decoded claims are not proof of authenticity.

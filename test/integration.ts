@@ -81,6 +81,24 @@ export async function run(): Promise<void> {
       "Format JSON should replace the selected text in the editor",
     );
 
+    const wholeJsonDocument = await vscode.workspace.openTextDocument({
+      content: '{"active":true,"count":2}',
+      language: "json",
+    });
+    const wholeJsonEditor =
+      await vscode.window.showTextDocument(wholeJsonDocument);
+    wholeJsonEditor.selection = new vscode.Selection(
+      wholeJsonDocument.positionAt(0),
+      wholeJsonDocument.positionAt(0),
+    );
+    await vscode.env.clipboard.writeText("clipboard must not be used");
+    await vscode.commands.executeCommand("selectcraft.formatJson");
+    assert.equal(
+      wholeJsonDocument.getText(),
+      '{\n  "active": true,\n  "count": 2\n}',
+      "JSON commands should process the whole JSON document when nothing is selected",
+    );
+
     const smartEditor = await selectedEditor('{"count":2}');
     restoreQuickPicks();
     const restoreSmartPick = interceptQuickPicks(chooseLabel("Format JSON"));

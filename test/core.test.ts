@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatJson,
   minifyJson,
+  sortJsonKeys,
   validateJson,
   jsonToYaml,
   yamlToJson,
@@ -27,6 +28,15 @@ describe("JSON and YAML", () => {
     expect(minifyJson('{\n "a": 1\n}')).toBe('{"a":1}');
     expect(validateJson("{bad}").valid).toBe(false);
     expect(validateJson('{"a":1}').valid).toBe(true);
+  });
+  it("sorts object keys recursively while preserving array order", () => {
+    expect(
+      sortJsonKeys(
+        '{"z":1,"a":{"z":2,"b":3},"items":[{"z":1,"a":2},{"y":1,"x":2}]}',
+      ),
+    ).toBe(
+      '{\n  "a": {\n    "b": 3,\n    "z": 2\n  },\n  "items": [\n    {\n      "a": 2,\n      "z": 1\n    },\n    {\n      "x": 2,\n      "y": 1\n    }\n  ],\n  "z": 1\n}',
+    );
   });
   it("generates a JSON Schema with nested and mixed array types", () => {
     const schema = JSON.parse(

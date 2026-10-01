@@ -9,6 +9,8 @@ All notable changes to SelectCraft are documented here.
 - Added an optional diff preview before applying transformation results.
 - Added integration coverage for Smart Action, insertion, new editor output, diff confirmation, and multiple selections.
 - Applied simple text transformations independently to every editor selection.
+- Added whole-document input for JSON and YAML commands when no text is selected.
+- Added recursive JSON key sorting while preserving array order.
 
 ## 1.0.0
 

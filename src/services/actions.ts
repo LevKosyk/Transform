@@ -2,6 +2,7 @@ import type { InputType, TransformResult } from "../types";
 import {
   formatJson,
   minifyJson,
+  sortJsonKeys,
   validateJson,
   jsonToYaml,
   yamlToJson,
@@ -25,6 +26,7 @@ import { convertCase } from "../transforms/cases";
 export type ActionId =
   | "formatJson"
   | "minifyJson"
+  | "sortJsonKeys"
   | "validateJson"
   | "jsonToYaml"
   | "yamlToJson"
@@ -60,6 +62,7 @@ export interface Action {
 export const actions: Action[] = [
   { id: "formatJson", label: "Format JSON" },
   { id: "minifyJson", label: "Minify JSON" },
+  { id: "sortJsonKeys", label: "Sort JSON Keys" },
   { id: "validateJson", label: "Validate JSON", validation: true },
   { id: "jsonToYaml", label: "JSON → YAML", structured: true },
   { id: "yamlToJson", label: "YAML → JSON", structured: true },
@@ -107,6 +110,7 @@ const actionMap: Record<InputType, ActionId[]> = {
   json: [
     "formatJson",
     "minifyJson",
+    "sortJsonKeys",
     "validateJson",
     "jsonToYaml",
     "jsonToTypescript",
@@ -144,6 +148,8 @@ export function executeAction(
       return { text: formatJson(input, indentation), language: "json" };
     case "minifyJson":
       return { text: minifyJson(input), language: "json" };
+    case "sortJsonKeys":
+      return { text: sortJsonKeys(input, indentation), language: "json" };
     case "jsonToYaml":
       return { text: jsonToYaml(input), language: "yaml" };
     case "yamlToJson":
