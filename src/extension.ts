@@ -21,7 +21,7 @@ interface InputContext {
   selection?: vscode.Selection;
 }
 function settings() {
-  return vscode.workspace.getConfiguration("devbox");
+  return vscode.workspace.getConfiguration("selectcraft");
 }
 async function getInput(
   allowEmpty = false,
@@ -42,7 +42,7 @@ async function getInput(
   }
   if (!silent)
     vscode.window.showInformationMessage(
-      "DevBox: Select text or copy text to the clipboard first.",
+      "SelectCraft: Select text or copy text to the clipboard first.",
     );
   return undefined;
 }
@@ -55,8 +55,8 @@ function friendlyError(id: ActionId, error: unknown): string {
     id === "jsonToYaml" ||
     id === "jsonToTypescript"
   )
-    return `DevBox: Selected text is not valid JSON. ${message}`;
-  return `DevBox: ${subject} failed. ${message}`;
+    return `SelectCraft: Selected text is not valid JSON. ${message}`;
+  return `SelectCraft: ${subject} failed. ${message}`;
 }
 async function chooseMode(
   context: InputContext,
@@ -76,7 +76,7 @@ async function chooseMode(
           : []),
         { label: "Open Result in New Editor", mode: "open" as ResultMode },
       ],
-      { placeHolder: "Where should DevBox put the result?" },
+      { placeHolder: "Where should SelectCraft put the result?" },
     );
     return choice?.mode;
   }
@@ -87,7 +87,7 @@ async function chooseMode(
         { label: "Open in New Editor", mode: "open" as ResultMode },
         { label: "Copy Result", mode: "copy" as ResultMode },
       ],
-      { placeHolder: "Where should DevBox put the result?" },
+      { placeHolder: "Where should SelectCraft put the result?" },
     );
     return choice?.mode;
   }
@@ -100,7 +100,9 @@ async function deliver(
 ): Promise<void> {
   if (mode === "copy") {
     await vscode.env.clipboard.writeText(result.text);
-    vscode.window.showInformationMessage("DevBox: Result copied to clipboard.");
+    vscode.window.showInformationMessage(
+      "SelectCraft: Result copied to clipboard.",
+    );
     return;
   }
   if (mode === "open") {
@@ -113,7 +115,7 @@ async function deliver(
   }
   if (!context.editor) {
     vscode.window.showWarningMessage(
-      "DevBox: Open an editor to insert the result.",
+      "SelectCraft: Open an editor to insert the result.",
     );
     return;
   }
@@ -128,7 +130,7 @@ async function deliver(
     edit.replace(range, result.text),
   );
   if (!success)
-    vscode.window.showErrorMessage("DevBox: Could not update the editor.");
+    vscode.window.showErrorMessage("SelectCraft: Could not update the editor.");
 }
 async function runAction(id: ActionId, context?: InputContext): Promise<void> {
   const action = actionById(id);
@@ -137,16 +139,16 @@ async function runAction(id: ActionId, context?: InputContext): Promise<void> {
   if (id === "validateJson") {
     const result = validateJson(input.text);
     if (result.valid)
-      vscode.window.showInformationMessage("DevBox: JSON is valid.");
+      vscode.window.showInformationMessage("SelectCraft: JSON is valid.");
     else
       vscode.window.showWarningMessage(
-        `DevBox: JSON is invalid${result.line ? ` at line ${result.line}, column ${result.column}` : ""}. ${result.message}`,
+        `SelectCraft: JSON is invalid${result.line ? ` at line ${result.line}, column ${result.column}` : ""}. ${result.message}`,
       );
     return;
   }
   if (id === "validateUuid") {
     vscode.window.showInformationMessage(
-      `DevBox: UUID is ${validateUuid(input.text) ? "valid" : "invalid"}.`,
+      `SelectCraft: UUID is ${validateUuid(input.text) ? "valid" : "invalid"}.`,
     );
     return;
   }
@@ -210,13 +212,13 @@ async function smartAction(): Promise<void> {
     if (editor) {
       const choice = await vscode.window.showQuickPick(
         [{ label: "Generate UUID v4", id: "generateUuid" as ActionId }],
-        { placeHolder: "DevBox" },
+        { placeHolder: "SelectCraft" },
       );
       if (choice)
         await runAction(choice.id, { text: "", editor, source: "empty" });
     } else
       vscode.window.showInformationMessage(
-        "DevBox: Select text or copy text to the clipboard first.",
+        "SelectCraft: Select text or copy text to the clipboard first.",
       );
     return;
   }
@@ -227,7 +229,7 @@ async function smartAction(): Promise<void> {
       id: action.id,
     })),
     {
-      placeHolder: `DevBox · ${type === "text" ? "Text" : type.toUpperCase()}`,
+      placeHolder: `SelectCraft · ${type === "text" ? "Text" : type.toUpperCase()}`,
     },
   );
   if (choice) await runAction(choice.id, input);
@@ -240,21 +242,21 @@ async function safelyRun(task: () => Promise<void>): Promise<void> {
       `[${new Date().toISOString()}] Unexpected error: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`,
     );
     vscode.window.showErrorMessage(
-      "DevBox: An unexpected error occurred. See the DevBox output channel.",
+      "SelectCraft: An unexpected error occurred. See the SelectCraft output channel.",
     );
   }
 }
 export function activate(context: vscode.ExtensionContext): void {
-  output = vscode.window.createOutputChannel("DevBox");
+  output = vscode.window.createOutputChannel("SelectCraft");
   context.subscriptions.push(output);
   context.subscriptions.push(
-    vscode.commands.registerCommand("devbox.smartAction", () =>
+    vscode.commands.registerCommand("selectcraft.smartAction", () =>
       safelyRun(smartAction),
     ),
   );
   for (const action of actions) {
     context.subscriptions.push(
-      vscode.commands.registerCommand(`devbox.${action.id}`, () =>
+      vscode.commands.registerCommand(`selectcraft.${action.id}`, () =>
         safelyRun(() => runAction(action.id)),
       ),
     );

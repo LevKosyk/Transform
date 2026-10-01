@@ -11,3 +11,4 @@ vitest.config.ts
 *.vsix
 .gitignore
 scripts/**
+dist/integration.js

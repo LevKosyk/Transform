@@ -1,4 +1,4 @@
-name: Release DevBox
+name: Release SelectCraft
 
 on:
   push:
@@ -34,15 +34,20 @@ jobs:
         run: |
           version="$(node -p "require('./package.json').version")"
           publisher="$(node -p "require('./package.json').publisher")"
+          repository="${GITHUB_REPOSITORY,,}"
           if [[ "$GITHUB_REF_NAME" != "v$version" ]]; then
             echo "::error::Tag $GITHUB_REF_NAME must match package.json version v$version"
             exit 1
           fi
-          if [[ -z "$publisher" || "$publisher" == 'devbox-placeholder' ]]; then
-            echo '::error::Replace the placeholder publisher in package.json before releasing.'
+          if [[ "$publisher" != 'levkosyk' ]]; then
+            echo '::error::The publisher must be levkosyk.'
             exit 1
           fi
-          echo "VSIX=devbox-$version.vsix" >> "$GITHUB_ENV"
+          if [[ "$repository" != 'levkosyk/selectcraft' ]]; then
+            echo '::error::Releases are allowed only from LevKosyk/SelectCraft.'
+            exit 1
+          fi
+          echo "VSIX=selectcraft-$version.vsix" >> "$GITHUB_ENV"
 
       - name: Install dependencies
         run: npm ci
@@ -53,6 +58,9 @@ jobs:
           npm run format:check
           npm test
           npm run build
+
+      - name: Test in VS Code Extension Host
+        run: xvfb-run -a npm run test:integration
 
       - name: Verify GIF links will be public
         shell: bash
@@ -111,5 +119,5 @@ jobs:
             gh release create "$GITHUB_REF_NAME" "$VSIX" \
               --verify-tag \
               --generate-notes \
-              --title "DevBox $GITHUB_REF_NAME"
+              --title "SelectCraft $GITHUB_REF_NAME"
           fi

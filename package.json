@@ -1,16 +1,54 @@
 {
-  "name": "devbox",
-  "displayName": "DevBox \u2014 Developer Toolbox",
-  "description": "JSON, JWT, Base64, timestamps, UUIDs and everyday developer utilities directly inside VS Code.",
+  "name": "selectcraft",
+  "displayName": "SelectCraft — Developer Text Tools",
+  "description": "Format and validate JSON, convert JSON to YAML or TypeScript, decode JWT and Base64, and transform URLs, dates, UUIDs, and text in VS Code.",
   "version": "1.0.0",
-  "publisher": "devbox-placeholder",
+  "publisher": "levkosyk",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LevKosyk/SelectCraft"
+  },
+  "homepage": "https://github.com/LevKosyk/SelectCraft#readme",
+  "bugs": {
+    "url": "https://github.com/LevKosyk/SelectCraft/issues"
+  },
   "engines": {
     "vscode": "^1.90.0"
   },
   "categories": [
-    "Other",
-    "Formatters"
+    "Formatters",
+    "Other"
+  ],
+  "keywords": [
+    "json formatter",
+    "json minify",
+    "json validator",
+    "json to yaml",
+    "yaml to json",
+    "json to typescript",
+    "jwt decoder",
+    "base64 encode",
+    "base64 decode",
+    "url encode",
+    "url decode",
+    "url parser",
+    "query string",
+    "unix timestamp",
+    "date converter",
+    "uuid generator",
+    "uuid validator",
+    "case converter",
+    "camel case",
+    "snake case",
+    "kebab case",
+    "text transform",
+    "developer tools",
+    "offline tools",
+    "vscode json formatter",
+    "json pretty print",
+    "vscode jwt decoder",
+    "typescript interface"
   ],
   "main": "./dist/extension.js",
   "icon": "assets/icon.png",
@@ -22,6 +60,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
+    "test:integration": "npm run build && tsc --noEmit --target ES2022 --module CommonJS --moduleResolution Node --strict --esModuleInterop --skipLibCheck test/integration.ts && esbuild test/integration.ts --bundle --platform=node --format=cjs --target=node20 --external:vscode --outfile=dist/integration.js && node scripts/run-integration.mjs",
     "package": "npm run build && vsce package --no-dependencies --allow-missing-repository --no-rewrite-relative-links"
   },
   "dependencies": {
@@ -31,6 +70,7 @@
     "@eslint/js": "^9.36.0",
     "@types/node": "^22.18.6",
     "@types/vscode": "^1.90.0",
+    "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.6.0",
     "esbuild": "^0.25.12",
     "eslint": "^9.36.0",
@@ -43,144 +83,144 @@
   "contributes": {
     "commands": [
       {
-        "command": "devbox.smartAction",
+        "command": "selectcraft.smartAction",
         "title": "Smart Action",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.formatJson",
+        "command": "selectcraft.formatJson",
         "title": "Format JSON",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.minifyJson",
+        "command": "selectcraft.minifyJson",
         "title": "Minify JSON",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.validateJson",
+        "command": "selectcraft.validateJson",
         "title": "Validate JSON",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.jsonToYaml",
+        "command": "selectcraft.jsonToYaml",
         "title": "JSON to YAML",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.yamlToJson",
+        "command": "selectcraft.yamlToJson",
         "title": "YAML to JSON",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.jsonToTypescript",
+        "command": "selectcraft.jsonToTypescript",
         "title": "JSON to TypeScript",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.decodeJwt",
+        "command": "selectcraft.decodeJwt",
         "title": "Decode JWT",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.copyJwtPayload",
+        "command": "selectcraft.copyJwtPayload",
         "title": "Copy JWT Payload",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.base64Encode",
+        "command": "selectcraft.base64Encode",
         "title": "Base64 Encode",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.base64Decode",
+        "command": "selectcraft.base64Decode",
         "title": "Base64 Decode",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.urlEncode",
+        "command": "selectcraft.urlEncode",
         "title": "URL Encode",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.urlDecode",
+        "command": "selectcraft.urlDecode",
         "title": "URL Decode",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.parseUrl",
+        "command": "selectcraft.parseUrl",
         "title": "Parse URL",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.parseQuery",
+        "command": "selectcraft.parseQuery",
         "title": "Parse Query Parameters",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.timestampToDate",
+        "command": "selectcraft.timestampToDate",
         "title": "Timestamp to Date",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.copyIsoDate",
+        "command": "selectcraft.copyIsoDate",
         "title": "Copy ISO Date",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.dateToTimestamp",
+        "command": "selectcraft.dateToTimestamp",
         "title": "Date to Timestamp",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.generateUuid",
+        "command": "selectcraft.generateUuid",
         "title": "Generate UUID v4",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.validateUuid",
+        "command": "selectcraft.validateUuid",
         "title": "Validate UUID",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.camelCase",
+        "command": "selectcraft.camelCase",
         "title": "camelCase",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.pascalCase",
+        "command": "selectcraft.pascalCase",
         "title": "PascalCase",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.snakeCase",
+        "command": "selectcraft.snakeCase",
         "title": "snake_case",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.kebabCase",
+        "command": "selectcraft.kebabCase",
         "title": "kebab-case",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.constantCase",
+        "command": "selectcraft.constantCase",
         "title": "CONSTANT_CASE",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.lowercase",
+        "command": "selectcraft.lowercase",
         "title": "lowercase",
-        "category": "DevBox"
+        "category": "SelectCraft"
       },
       {
-        "command": "devbox.uppercase",
+        "command": "selectcraft.uppercase",
         "title": "UPPERCASE",
-        "category": "DevBox"
+        "category": "SelectCraft"
       }
     ],
     "keybindings": [
       {
-        "command": "devbox.smartAction",
+        "command": "selectcraft.smartAction",
         "key": "ctrl+shift+d",
         "mac": "cmd+shift+d",
         "when": "editorTextFocus"
@@ -189,58 +229,39 @@
     "menus": {
       "editor/context": [
         {
-          "submenu": "devbox.editorMenu",
-          "group": "9_cutcopypaste",
+          "command": "selectcraft.smartAction",
+          "group": "9_cutcopypaste@1",
+          "when": "editorHasSelection"
+        },
+        {
+          "submenu": "selectcraft.editorMenu",
+          "group": "9_cutcopypaste@2",
           "when": "editorHasSelection"
         }
       ],
-      "devbox.editorMenu": [
+      "selectcraft.editorMenu": [
         {
-          "command": "devbox.formatJson",
+          "command": "selectcraft.formatJson",
           "group": "1_json@1"
         },
         {
-          "command": "devbox.minifyJson",
+          "command": "selectcraft.minifyJson",
           "group": "1_json@2"
         },
         {
-          "command": "devbox.jsonToYaml",
-          "group": "1_json@3"
-        },
-        {
-          "command": "devbox.jsonToTypescript",
-          "group": "1_json@4"
-        },
-        {
-          "command": "devbox.decodeJwt",
+          "command": "selectcraft.decodeJwt",
           "group": "2_encoding@1"
         },
         {
-          "command": "devbox.base64Encode",
+          "command": "selectcraft.base64Decode",
           "group": "2_encoding@2"
-        },
-        {
-          "command": "devbox.base64Decode",
-          "group": "2_encoding@3"
-        },
-        {
-          "command": "devbox.urlEncode",
-          "group": "3_other@1"
-        },
-        {
-          "command": "devbox.urlDecode",
-          "group": "3_other@2"
-        },
-        {
-          "command": "devbox.timestampToDate",
-          "group": "3_other@3"
         }
       ]
     },
     "configuration": {
-      "title": "DevBox",
+      "title": "SelectCraft",
       "properties": {
-        "devbox.json.indentation": {
+        "selectcraft.json.indentation": {
           "type": "string",
           "enum": [
             "2",
@@ -250,12 +271,12 @@
           "default": "2",
           "description": "Indentation used for formatted JSON and generated TypeScript."
         },
-        "devbox.smartAction.clipboardFallback": {
+        "selectcraft.smartAction.clipboardFallback": {
           "type": "boolean",
           "default": true,
           "description": "Read the clipboard when no text is selected."
         },
-        "devbox.defaultResultBehavior": {
+        "selectcraft.defaultResultBehavior": {
           "type": "string",
           "enum": [
             "replace",
@@ -269,8 +290,8 @@
     },
     "submenus": [
       {
-        "id": "devbox.editorMenu",
-        "label": "DevBox"
+        "id": "selectcraft.editorMenu",
+        "label": "SelectCraft"
       }
     ]
   }

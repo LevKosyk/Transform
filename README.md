@@ -1,6 +1,6 @@
-# DevBox — Developer Toolbox
+# SelectCraft — Developer Text Tools
 
-Everyday developer utilities inside VS Code. Select text, choose an action, and keep working in your editor. DevBox runs locally and works offline.
+Everyday developer utilities inside VS Code. Select text, choose an action, and keep working in your editor. SelectCraft runs locally and works offline.
 
 **Version:** 1.0.0 · **Requires:** VS Code 1.90 or newer
 
@@ -8,27 +8,27 @@ Everyday developer utilities inside VS Code. Select text, choose an action, and 
 
 1. Select text in an editor.
 2. Press **⌘⇧D** on macOS or **Ctrl+Shift+D** on Windows and Linux.
-3. Choose an action and press **Enter**. DevBox places relevant actions first based on the selected text.
+3. Choose an action and press **Enter**. SelectCraft places relevant actions first based on the selected text.
 
-![Selecting JSON and opening DevBox Smart Action in VS Code](assets/smart.gif)
+![Select JSON, run a SelectCraft action, and see the formatted result in the editor](assets/smart.gif)
 
-You can also open the Command Palette (**⌘⇧P** / **Ctrl+Shift+P**) and run **DevBox: Smart Action**. If a different extension uses the shortcut, the Command Palette always works.
+You can also open the Command Palette (**⌘⇧P** / **Ctrl+Shift+P**) and run **SelectCraft: Smart Action**. If a different extension uses the shortcut, the Command Palette always works.
 
 ### Editor context menu
 
-Select text, right-click, open **DevBox**, and choose a command. The submenu appears only while text is selected. Every command is also available by name in the Command Palette.
+Select text and right-click to run **SelectCraft: Smart Action** directly. The **SelectCraft** submenu contains Format JSON, Minify JSON, Decode JWT, and Base64 Decode. Every command is also available by name in the Command Palette.
 
 ## Core workflows
 
 ### Format JSON
 
-Select `{"name":"Lev","active":true}` and run **Format JSON**. DevBox replaces the selection with indented JSON. Use **Minify JSON** for the reverse operation or **Validate JSON** to check syntax without changing the text.
+Select `{"name":"Lev","active":true}` and run **Format JSON**. SelectCraft replaces the selection with indented JSON. Use **Minify JSON** for the reverse operation or **Validate JSON** to check syntax without changing the text.
 
 ### Generate TypeScript from JSON
 
 Select a JSON object and run **JSON → TypeScript**. Choose **Interface** or **Type**, then choose **Replace Selection**, **Open in New Editor**, or **Copy Result**.
 
-![Finding JSON to TypeScript in the DevBox action menu in VS Code](assets/typescript.gif)
+![Convert selected JSON to a TypeScript interface and open the generated result in VS Code](assets/typescript.gif)
 
 For example, `{"user":{"id":1,"name":"Lev"}}` produces definitions for both the root object and its nested user. Arrays of objects share a definition; empty arrays use `unknown[]`.
 
@@ -54,26 +54,26 @@ Validation commands show a notification and leave the editor unchanged. Invalid 
 ## Where results go
 
 - **Selected text:** ordinary transformations replace the selection. Structured output such as TypeScript prompts for a destination.
-- **No selection:** DevBox can read the clipboard after you invoke a command. It then offers **Copy Result**, **Insert Result at Cursor**, or **Open Result in New Editor**.
-- **Generate UUID v4:** with no selection, DevBox inserts a new UUID at the cursor.
+- **No selection:** SelectCraft can read the clipboard after you invoke a command. It then offers **Copy Result**, **Insert Result at Cursor**, or **Open Result in New Editor**.
+- **Generate UUID v4:** with no selection, SelectCraft inserts a new UUID at the cursor.
 
-You can turn off clipboard fallback in Settings. DevBox reads the clipboard only when you invoke a command and no text is selected.
+You can turn off clipboard fallback in Settings. SelectCraft reads the clipboard only when you invoke a command and no text is selected.
 
 ## Settings
 
-Open Settings and search for **DevBox**, or edit `settings.json`:
+Open Settings and search for **SelectCraft**, or edit `settings.json`:
 
-| Setting                                | Default     | Options                        |
-| -------------------------------------- | ----------- | ------------------------------ |
-| `devbox.json.indentation`              | `"2"`       | `"2"`, `"4"`, `"tab"`          |
-| `devbox.smartAction.clipboardFallback` | `true`      | `true`, `false`                |
-| `devbox.defaultResultBehavior`         | `"replace"` | `"replace"`, `"copy"`, `"ask"` |
+| Setting                                     | Default     | Options                        |
+| ------------------------------------------- | ----------- | ------------------------------ |
+| `selectcraft.json.indentation`              | `"2"`       | `"2"`, `"4"`, `"tab"`          |
+| `selectcraft.smartAction.clipboardFallback` | `true`      | `true`, `false`                |
+| `selectcraft.defaultResultBehavior`         | `"replace"` | `"replace"`, `"copy"`, `"ask"` |
 
 For example, to ask where each ordinary transformation should go:
 
 ```json
 {
-  "devbox.defaultResultBehavior": "ask"
+  "selectcraft.defaultResultBehavior": "ask"
 }
 ```
 
@@ -86,7 +86,7 @@ npm install
 npm run build
 ```
 
-Open this folder in VS Code and press **F5**. VS Code opens a separate **Extension Development Host** window with DevBox loaded. After code changes, run **Developer: Reload Window** in that window.
+Open this folder in VS Code and press **F5**. VS Code opens a separate **Extension Development Host** window with SelectCraft loaded. After code changes, run **Developer: Reload Window** in that window.
 
 To install a local build:
 
@@ -94,38 +94,41 @@ To install a local build:
 npm run package
 ```
 
-In VS Code, run **Extensions: Install from VSIX...** and select `devbox-1.0.0.vsix` from the project folder.
+In VS Code, run **Extensions: Install from VSIX...** and select `selectcraft-1.0.0.vsix` from the project folder.
 
 ## Troubleshooting
 
-- **No action appears:** select text in an editor, then use **DevBox: Smart Action** from the Command Palette. If clipboard fallback is disabled, DevBox needs a selection.
+- **No action appears:** select text in an editor, then use **SelectCraft: Smart Action** from the Command Palette. If clipboard fallback is disabled, SelectCraft needs a selection.
 - **The shortcut opens another command:** use the Command Palette or change the conflicting keybinding in VS Code.
-- **A conversion fails:** check the selected data. For JSON, **DevBox: Validate JSON** reports the error location when available.
+- **A conversion fails:** check the selected data. For JSON, **SelectCraft: Validate JSON** reports the error location when available.
 
 ## Privacy and security
 
-DevBox detects and transforms text on your computer. It has no account, analytics, telemetry, or external API calls. The YAML parser is bundled and loaded only when needed. JWT decoding is for inspection; it does not verify signatures.
+SelectCraft detects and transforms text on your computer. It has no account, analytics, telemetry, or external API calls. The YAML parser is bundled and loaded only when needed. JWT decoding is for inspection; it does not verify signatures.
 
 ## Development
 
 ```sh
 npm test
+npm run test:integration
 npm run lint
 npm run format:check
 npm run build
 npm run package
 ```
 
-Transformations and input detection live in `src/transforms/` and `src/detection/`. `src/extension.ts` connects them to VS Code commands, menus, and result delivery.
+Transformations and input detection live in `src/transforms/` and `src/detection/`. `src/extension.ts` connects them to VS Code commands, menus, and result delivery. The integration test launches an isolated VS Code Extension Development Host and checks results in the editor and clipboard. On macOS it uses the standard VS Code installation path; set `VSCODE_EXECUTABLE` if VS Code is installed elsewhere.
+
+See [CHANGELOG.md](CHANGELOG.md) for the release history.
 
 ## Automated releases
 
-[The GitHub Actions release workflow](.github/workflows/release.yml) runs for tags such as `v1.0.0`. It checks that the tag matches `package.json`, runs lint, formatting, tests, and build, packages a VSIX, publishes to the VS Code Marketplace, and attaches the VSIX to a GitHub Release. It rewrites README GIF links to public, commit-specific URLs for the Marketplace.
+[The GitHub Actions release workflow](.github/workflows/release.yml) runs for tags such as `v1.0.0`. It checks that the tag matches `package.json`, runs lint, formatting, unit and VS Code integration tests, packages a VSIX, publishes to the VS Code Marketplace, and attaches the VSIX to a GitHub Release. It rewrites README GIF links to public, commit-specific URLs for the Marketplace.
 
 Before your first release:
 
-1. Create a VS Code Marketplace publisher and replace `devbox-placeholder` in `package.json` with its ID.
-2. Push the project to a **public** GitHub repository so the GIFs are visible in the Marketplace.
+1. Use the existing `levkosyk` VS Code Marketplace publisher.
+2. Push the project to the **public** [LevKosyk/SelectCraft](https://github.com/LevKosyk/SelectCraft) GitHub repository so the GIFs are visible in the Marketplace.
 3. Configure Marketplace credentials. For [Microsoft Entra ID with GitHub OIDC](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#secure-automated-publishing-to-visual-studio-marketplace), set `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_SUBSCRIPTION_ID` as repository **Actions variables**, create a federated credential with subject `repo:OWNER/REPO:environment:marketplace`, and associate that identity with your Marketplace publisher. Alternatively, set a `VSCE_PAT` repository secret with **Marketplace (Manage)** scope.
 4. Update the version in `package.json`, create the matching tag, and push it:
 
