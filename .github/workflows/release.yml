@@ -1,35 +1,30 @@
-name: Release SelectCraft
+name: Release
 
 on:
   push:
     tags:
       - "v*"
 
-permissions:
-  contents: write
-  id-token: write
+permissions: {}
 
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  release:
+  verify:
+    name: Verify release metadata
     runs-on: ubuntu-latest
-    environment: marketplace
+    timeout-minutes: 5
+    permissions:
+      contents: read
     steps:
       - name: Check out tagged source
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-
-      - name: Verify release tag and publisher
+      - name: Verify tag, publisher and repository
         shell: bash
         run: |
           version="$(node -p "require('./package.json').version")"
@@ -47,20 +42,43 @@ jobs:
             echo '::error::Releases are allowed only from LevKosyk/Transform.'
             exit 1
           fi
-          echo "VSIX=selectcraft-$version.vsix" >> "$GITHUB_ENV"
+          if ! grep -Fxq "## $version" changelog.md; then
+            echo "::warning::changelog.md has no '## $version' section; the release notes will be generated from commits only."
+          fi
+
+  ci:
+    name: CI
+    needs: verify
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    name: Publish
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: marketplace
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Check code
-        run: |
-          npm run lint
-          npm run format:check
-          npm test
-          npm run build
-
-      - name: Test in VS Code Extension Host
-        run: xvfb-run -a npm run test:integration
+      - name: Build
+        run: npm run build
 
       - name: Verify GIF links will be public
         shell: bash
@@ -75,17 +93,18 @@ jobs:
       - name: Package VSIX with public GIF links
         shell: bash
         run: |
+          vsix="selectcraft-${GITHUB_REF_NAME#v}.vsix"
           npx vsce package \
             --no-dependencies \
-            --allow-missing-repository \
             --baseContentUrl "https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_SHA" \
             --baseImagesUrl "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/$GITHUB_SHA" \
-            --out "$VSIX"
-          test -s "$VSIX"
+            --out "$vsix"
+          test -s "$vsix"
+          echo "VSIX=$vsix" >> "$GITHUB_ENV"
 
       - name: Authenticate to Microsoft Entra ID
         if: ${{ vars.AZURE_CLIENT_ID != '' && vars.AZURE_TENANT_ID != '' && vars.AZURE_SUBSCRIPTION_ID != '' }}
-        uses: azure/login@v3
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
@@ -106,18 +125,34 @@ jobs:
             exit 1
           fi
 
+      - name: Publish to Open VSX
+        shell: bash
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: |
+          if [[ -z "$OVSX_PAT" ]]; then
+            echo '::notice::OVSX_PAT is not configured; skipping Open VSX.'
+            exit 0
+          fi
+          npx --yes ovsx@1.2.0 publish "$VSIX" --skip-duplicate
+
       - name: Create GitHub Release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            if ! gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name' | grep -Fxq "$VSIX"; then
-              gh release upload "$GITHUB_REF_NAME" "$VSIX"
-            fi
-          else
-            gh release create "$GITHUB_REF_NAME" "$VSIX" \
-              --verify-tag \
-              --generate-notes \
-              --title "SelectCraft $GITHUB_REF_NAME"
+            gh release upload "$GITHUB_REF_NAME" "$VSIX" --clobber
+            exit 0
           fi
+          version="${GITHUB_REF_NAME#v}"
+          awk -v heading="## $version" '
+            $0 == heading { found = 1; next }
+            found && /^## / { exit }
+            found { print }
+          ' changelog.md > release-notes.md
+          gh release create "$GITHUB_REF_NAME" "$VSIX" \
+            --verify-tag \
+            --generate-notes \
+            --notes-file release-notes.md \
+            --title "Transform $GITHUB_REF_NAME"
