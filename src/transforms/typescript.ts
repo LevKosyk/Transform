@@ -1,4 +1,5 @@
 import { indentValue, type Indentation, parseJson } from "./json";
+import { createShapeOf } from "./shape";
 
 type OutputKind = "interface" | "type";
 function nameFor(key: string): string {
@@ -27,11 +28,14 @@ export function jsonToTypescript(
   const used = new Set<string>();
   const nextSuffix = new Map<string, number>();
   const shapeNames = new Map<string, string>();
-  const shapeCache = new WeakMap<object, string>();
+  const shapeOf = createShapeOf((value) =>
+    value === null ? "null" : typeof value,
+  );
   const indent = indentValue(indentation);
   const pad = typeof indent === "number" ? " ".repeat(indent) : indent;
   const rootName = nameFor(options.rootName?.trim() || "Root");
   const exported = options.export ? "export " : "";
+  const optional = options.optionalProperties ? "?" : "";
   function unique(base: string): string {
     let name = base;
     let index = nextSuffix.get(base) ?? 2;
@@ -40,29 +44,13 @@ export function jsonToTypescript(
     used.add(name);
     return name;
   }
-  function shapeOf(value: unknown): string {
-    if (value === null) return "null";
-    if (typeof value !== "object") return typeof value;
-    const cached = shapeCache.get(value);
-    if (cached) return cached;
-    const shape = Array.isArray(value)
-      ? JSON.stringify(["array", [...new Set(value.map(shapeOf))].sort()])
-      : JSON.stringify([
-          "object",
-          Object.entries(value)
-            .sort(([a], [b]) => a.localeCompare(b))
-            .map(([key, item]) => [key, shapeOf(item)]),
-        ]);
-    shapeCache.set(value, shape);
-    return shape;
-  }
   function typeOf(value: unknown, hint: string): string {
     if (value === null) return "null";
     if (Array.isArray(value)) {
       if (!value.length) return "unknown[]";
-      const types = [...new Set(value.map((item) => typeOf(item, hint)))];
-      const union = types.join(" | ");
-      return types.length > 1 ? `(${union})[]` : `${union}[]`;
+      const types = new Set(value.map((item) => typeOf(item, hint)));
+      const union = [...types].join(" | ");
+      return types.size > 1 ? `(${union})[]` : `${union}[]`;
     }
     if (typeof value === "object")
       return define(value as Record<string, unknown>, hint);
@@ -76,15 +64,16 @@ export function jsonToTypescript(
     shapeNames.set(shape, name);
     const position = definitions.length;
     definitions.push("");
-    const properties = Object.entries(value).map(
-      ([key, item]) =>
-        `${pad}${propertyName(key)}${options.optionalProperties ? "?" : ""}: ${typeOf(item, key)};`,
-    );
-    const block =
+    const body = Object.entries(value)
+      .map(
+        ([key, item]) =>
+          `${pad}${propertyName(key)}${optional}: ${typeOf(item, key)};`,
+      )
+      .join("\n");
+    definitions[position] =
       kind === "interface"
-        ? `${exported}interface ${name} {\n${properties.join("\n")}\n}`
-        : `${exported}type ${name} = {\n${properties.join("\n")}\n};`;
-    definitions[position] = block;
+        ? `${exported}interface ${name} {\n${body}\n}`
+        : `${exported}type ${name} = {\n${body}\n};`;
     return name;
   }
   if (root !== null && typeof root === "object" && !Array.isArray(root))
