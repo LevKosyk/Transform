@@ -91,4 +91,4 @@ Integration tests cover Smart Action, diff confirmation, TypeScript settings, JS
 
 ## Support and license
 
-Report bugs or request features in [GitHub Issues](https://github.com/LevKosyk/SelectCraft/issues). Licensed under [MIT](LICENSE). See [changelog.md](changelog.md) for release history.
+Report bugs or request features in [GitHub Issues](https://github.com/LevKosyk/Transform/issues). Licensed under [MIT](LICENSE). See [changelog.md](changelog.md) for release history.

@@ -43,8 +43,8 @@ jobs:
             echo '::error::The publisher must be levkosyk.'
             exit 1
           fi
-          if [[ "$repository" != 'levkosyk/selectcraft' ]]; then
-            echo '::error::Releases are allowed only from LevKosyk/SelectCraft.'
+          if [[ "$repository" != 'levkosyk/transform' ]]; then
+            echo '::error::Releases are allowed only from LevKosyk/Transform.'
             exit 1
           fi
           echo "VSIX=selectcraft-$version.vsix" >> "$GITHUB_ENV"
