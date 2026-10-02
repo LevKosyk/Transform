@@ -1,3 +1,4 @@
+import { compareKeys } from "./shape";
 import { getYaml } from "./yamlRuntime";
 
 export type Indentation = "2" | "4" | "tab";
@@ -20,9 +21,9 @@ function sortKeys(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sortKeys);
   if (value !== null && typeof value === "object")
     return Object.fromEntries(
-      Object.entries(value)
-        .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
-        .map(([key, item]) => [key, sortKeys(item)]),
+      Object.keys(value)
+        .sort(compareKeys)
+        .map((key) => [key, sortKeys((value as Record<string, unknown>)[key])]),
     );
   return value;
 }
@@ -57,7 +58,6 @@ export function validateJson(
     return { valid: true };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Invalid JSON";
-    const match = /position (\d+)/i.exec(message);
     const lineColumn = /line (\d+) column (\d+)/i.exec(message);
     if (lineColumn)
       return {
@@ -66,6 +66,7 @@ export function validateJson(
         line: Number(lineColumn[1]),
         column: Number(lineColumn[2]),
       };
+    const match = /position (\d+)/i.exec(message);
     if (match) {
       const prefix = input.slice(0, Number(match[1]));
       const lines = prefix.split(/\r\n|\n|\r/);

@@ -1,92 +1,81 @@
 import { getYaml } from "../transforms/yamlRuntime";
 import type { InputType } from "../types";
-import { base64Decode } from "../transforms/encoding";
+import { base64Decode, isHttpUrl } from "../transforms/encoding";
 import { detectDateKind } from "../transforms/dates";
 import { validateUuid } from "../transforms/uuid";
 import { decodeJwt } from "../transforms/jwt";
 
 type Detector = { type: InputType; test: (text: string) => boolean };
+
+const JWT_PATTERN = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/;
+const YAML_PATTERN = /^[\w"'][^\n]*:\s|^-\s/m;
+
+function succeeds(task: () => unknown): boolean {
+  try {
+    return task() !== false;
+  } catch {
+    return false;
+  }
+}
+
+function isPrintable(text: string): boolean {
+  for (let index = 0; index < text.length; index++) {
+    const code = text.charCodeAt(index);
+    if (code <= 31 && code !== 9 && code !== 10 && code !== 13) return false;
+  }
+  return true;
+}
+
 const detectors: Detector[] = [
   {
     type: "jwt",
-    test: (text) => {
-      if (!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(text))
-        return false;
-      try {
-        decodeJwt(text);
-        return true;
-      } catch {
-        return false;
-      }
-    },
+    test: (text) => JWT_PATTERN.test(text) && succeeds(() => decodeJwt(text)),
   },
   {
     type: "json",
-    test: (text) => {
-      if (!/^[{[]/.test(text)) return false;
-      try {
-        JSON.parse(text);
-        return true;
-      } catch {
-        return false;
-      }
-    },
+    test: (text) =>
+      (text[0] === "{" || text[0] === "[") && succeeds(() => JSON.parse(text)),
   },
   {
     type: "url",
-    test: (text) => {
-      if (!/^https?:\/\//i.test(text)) return false;
-      try {
-        const url = new URL(text);
-        return ["http:", "https:"].includes(url.protocol);
-      } catch {
-        return false;
-      }
-    },
+    test: (text) =>
+      /^https?:\/\//i.test(text) && succeeds(() => isHttpUrl(new URL(text))),
   },
   { type: "uuid", test: validateUuid },
   {
     type: "timestamp",
-    test: (text) =>
-      ["seconds", "milliseconds"].includes(detectDateKind(text) ?? ""),
+    test: (text) => {
+      const kind = detectDateKind(text);
+      return kind === "seconds" || kind === "milliseconds";
+    },
   },
   { type: "date", test: (text) => detectDateKind(text) === "iso" },
   {
     type: "yaml",
-    test: (text) => {
-      if (!/^[\w"'][^\n]*:\s|^-\s/m.test(text) || !text.includes("\n"))
-        return false;
-      try {
+    test: (text) =>
+      text.includes("\n") &&
+      YAML_PATTERN.test(text) &&
+      succeeds(() => {
         const yaml = getYaml();
         const doc = yaml.parseDocument(text, { uniqueKeys: true });
         return (
           !doc.errors.length &&
           (yaml.isMap(doc.contents) || yaml.isSeq(doc.contents))
         );
-      } catch {
-        return false;
-      }
-    },
+      }),
   },
   {
     type: "base64",
-    test: (text) => {
-      if (text.length < 12 || !/[=+/]/.test(text)) return false;
-      try {
+    test: (text) =>
+      text.length >= 12 &&
+      /[=+/]/.test(text) &&
+      succeeds(() => {
         const decoded = base64Decode(text);
-        if (!decoded) return false;
-        for (const char of decoded) {
-          const code = char.codePointAt(0) ?? 0;
-          if (code <= 31 && code !== 9 && code !== 10 && code !== 13)
-            return false;
-        }
-        return true;
-      } catch {
-        return false;
-      }
-    },
+        return decoded !== "" && isPrintable(decoded);
+      }),
   },
 ];
+
 export function detectInput(input: string): InputType {
   const text = input.trim();
   if (!text) return "unknown";

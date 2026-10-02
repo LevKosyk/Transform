@@ -21,7 +21,7 @@ import {
 } from "../transforms/encoding";
 import { dateFormats } from "../transforms/dates";
 import { generateUuid, validateUuid } from "../transforms/uuid";
-import { convertCase } from "../transforms/cases";
+import { convertCase, type CaseStyle } from "../transforms/cases";
 
 export type ActionId =
   | "formatJson"
@@ -129,19 +129,34 @@ const actionMap: Record<InputType, ActionId[]> = {
 export function relevantActions(type: InputType): Action[] {
   return actionMap[type].map(actionById);
 }
-export type ExecuteOptions = {
+const caseStyles: Partial<Record<ActionId, CaseStyle>> = {
+  camelCase: "camel",
+  pascalCase: "pascal",
+  snakeCase: "snake",
+  kebabCase: "kebab",
+  constantCase: "constant",
+  lowercase: "lower",
+  uppercase: "upper",
+};
+export type DateFormat = "local" | "utc" | "seconds" | "milliseconds";
+export interface ExecuteOptions {
   indentation?: Indentation;
   typescriptKind?: "interface" | "type";
   typescriptRootName?: string;
   typescriptExport?: boolean;
   typescriptOptionalProperties?: boolean;
-  dateFormat?: "local" | "utc" | "seconds" | "milliseconds";
-};
+  dateFormat?: DateFormat;
+}
+function json(value: unknown): TransformResult {
+  return { text: JSON.stringify(value, null, 2), language: "json" };
+}
 export function executeAction(
   id: ActionId,
   input: string,
   options: ExecuteOptions = {},
 ): TransformResult {
+  const caseStyle = caseStyles[id];
+  if (caseStyle) return { text: convertCase(input, caseStyle) };
   const indentation = options.indentation ?? "2";
   switch (id) {
     case "formatJson":
@@ -173,10 +188,7 @@ export function executeAction(
     case "decodeJwt":
       return { text: formatJwt(input), language: "plaintext" };
     case "copyJwtPayload":
-      return {
-        text: JSON.stringify(decodeJwt(input).payload, null, 2),
-        language: "json",
-      };
+      return json(decodeJwt(input).payload);
     case "base64Encode":
       return { text: base64Encode(input) };
     case "base64Decode":
@@ -186,49 +198,17 @@ export function executeAction(
     case "urlDecode":
       return { text: urlDecode(input) };
     case "parseUrl":
-      return {
-        text: JSON.stringify(parseUrl(input), null, 2),
-        language: "json",
-      };
+      return json(parseUrl(input));
     case "parseQuery":
-      return {
-        text: JSON.stringify(parseQuery(input), null, 2),
-        language: "json",
-      };
-    case "timestampToDate": {
-      const formats = dateFormats(input);
-      const format = options.dateFormat ?? "utc";
-      return {
-        text:
-          format === "local"
-            ? formats.local
-            : format === "seconds"
-              ? formats.seconds
-              : format === "milliseconds"
-                ? formats.milliseconds
-                : formats.utc,
-      };
-    }
+      return json(parseQuery(input));
+    case "timestampToDate":
+      return { text: dateFormats(input)[options.dateFormat ?? "utc"] };
     case "copyIsoDate":
       return { text: dateFormats(input).utc };
     case "dateToTimestamp":
       return { text: dateFormats(input).seconds };
     case "generateUuid":
       return { text: generateUuid() };
-    case "camelCase":
-      return { text: convertCase(input, "camel") };
-    case "pascalCase":
-      return { text: convertCase(input, "pascal") };
-    case "snakeCase":
-      return { text: convertCase(input, "snake") };
-    case "kebabCase":
-      return { text: convertCase(input, "kebab") };
-    case "constantCase":
-      return { text: convertCase(input, "constant") };
-    case "lowercase":
-      return { text: convertCase(input, "lower") };
-    case "uppercase":
-      return { text: convertCase(input, "upper") };
     case "validateJson":
       throw new Error(
         validateJson(input).valid ? "JSON is valid." : "JSON is invalid.",
@@ -237,5 +217,7 @@ export function executeAction(
       throw new Error(
         validateUuid(input) ? "UUID is valid." : "UUID is invalid.",
       );
+    default:
+      throw new Error(`Unsupported action: ${id}`);
   }
 }
