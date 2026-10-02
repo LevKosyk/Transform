@@ -2,10 +2,13 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Run SelectCraft",
+      "name": "Run Transform",
       "type": "extensionHost",
       "request": "launch",
-      "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "${workspaceFolder}"
+      ],
       "preLaunchTask": "npm: build"
     }
   ]
