@@ -1,7 +1,7 @@
 {
-  "name": "selectcraft",
-  "displayName": "Transform — JSON, JWT & Text Tools",
-  "description": "Format JSON, generate JSON Schema and TypeScript, convert YAML, decode JWT and Base64, and transform URLs, dates, UUIDs, and text offline in VS Code.",
+  "name": "transform",
+  "displayName": "Transform — JSON Formatter, JWT Decoder & Dev Tools",
+  "description": "JSON formatter & validator, JWT decoder, Base64 and timestamp hovers, JSON to TypeScript, Zod, Go, Python & Rust, YAML/CSV/TOML converter, UUID, hash and case tools. 100% offline.",
   "version": "1.0.0",
   "publisher": "levkosyk",
   "license": "MIT",
@@ -22,39 +22,52 @@
   ],
   "keywords": [
     "json formatter",
-    "sort json keys",
-    "format json",
-    "json pretty print",
-    "json minifier",
-    "json validator",
-    "json to yaml",
-    "yaml to json",
-    "json to typescript",
-    "typescript interface generator",
-    "json schema generator",
-    "json to json schema",
+    "json",
     "jwt decoder",
-    "jwt viewer",
-    "base64 encoder",
-    "base64 decoder",
-    "url encoder",
-    "url decoder",
-    "url parser",
-    "query string parser",
-    "unix timestamp converter",
-    "date converter",
+    "jwt",
+    "base64",
+    "json to typescript",
+    "json to zod",
+    "json to go",
+    "json to python",
+    "json schema",
+    "yaml to json",
+    "json to yaml",
+    "json to csv",
+    "csv to json",
+    "toml",
+    "jsonpath",
+    "jsonc",
+    "escape json",
+    "timestamp converter",
+    "epoch",
     "uuid generator",
-    "uuid validator",
+    "ulid",
+    "hash",
+    "sha256",
     "case converter",
     "camel case",
     "snake case",
-    "kebab case",
-    "vscode developer tools",
-    "developer text tools"
+    "url encode",
+    "developer tools",
+    "offline"
   ],
   "main": "./dist/extension.js",
   "icon": "assets/icon.png",
-  "activationEvents": [],
+  "galleryBanner": {
+    "color": "#17181C",
+    "theme": "dark"
+  },
+  "pricing": "Free",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    },
+    "virtualWorkspaces": true
+  },
   "scripts": {
     "build": "tsc --noEmit -p . && node -e \"require('node:fs').rmSync('dist', {recursive:true,force:true})\" && esbuild src/extension.ts --bundle --platform=node --format=cjs --target=node20 --external:vscode --outfile=dist/extension.js",
     "watch": "tsc -w -p .",
@@ -66,17 +79,20 @@
     "package": "npm run build && vsce package --no-dependencies --allow-missing-repository --no-rewrite-relative-links"
   },
   "dependencies": {
+    "json5": "^2.2.3",
+    "smol-toml": "^1.9.0",
     "yaml": "^2.8.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
     "@types/node": "^26.6.3",
-    "@types/vscode": "^1.90.0",
+    "@types/vscode": "~1.90.0",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.6.0",
     "esbuild": "^0.28.2",
     "eslint": "^9.36.0",
     "globals": "^17.12.0",
+    "ovsx": "^1.2.0",
     "prettier": "^3.6.2",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.44.0",
@@ -85,187 +101,332 @@
   "contributes": {
     "commands": [
       {
-        "command": "selectcraft.smartAction",
+        "command": "transform.smartAction",
         "title": "Smart Action",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.formatJson",
+        "command": "transform.copyJsonPath",
+        "title": "Copy JSON Path at Cursor",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.formatJson",
         "title": "Format JSON",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.minifyJson",
+        "command": "transform.minifyJson",
         "title": "Minify JSON",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.sortJsonKeys",
+        "command": "transform.sortJsonKeys",
         "title": "Sort JSON Keys",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.validateJson",
+        "command": "transform.validateJson",
         "title": "Validate JSON",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.jsonToYaml",
+        "command": "transform.escapeJson",
+        "title": "Escape as JSON String",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.unescapeJson",
+        "title": "Unescape JSON String",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.queryJson",
+        "title": "Query JSON Path…",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.jsonToYaml",
         "title": "JSON to YAML",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.yamlToJson",
+        "command": "transform.yamlToJson",
         "title": "YAML to JSON",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.jsonToTypescript",
+        "command": "transform.yamlToJsonc",
+        "title": "YAML to JSONC (Keep Comments)",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.jsoncToYaml",
+        "title": "JSONC to YAML (Keep Comments)",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.jsonToTypescript",
         "title": "JSON to TypeScript",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.jsonToSchema",
+        "command": "transform.jsonToZod",
+        "title": "JSON to Zod Schema",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.jsonToGo",
+        "title": "JSON to Go Structs",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.jsonToPython",
+        "title": "JSON to Python (Pydantic)",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.jsonToRust",
+        "title": "JSON to Rust (serde)",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.jsonToSchema",
         "title": "JSON to JSON Schema",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.decodeJwt",
+        "command": "transform.jsonToCsv",
+        "title": "JSON to CSV",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.csvToJson",
+        "title": "CSV to JSON",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.jsonToToml",
+        "title": "JSON to TOML",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.tomlToJson",
+        "title": "TOML to JSON",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.jsonToJson5",
+        "title": "JSON to JSON5",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.json5ToJson",
+        "title": "JSON5 / JSONC to JSON",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.decodeJwt",
         "title": "Decode JWT",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.copyJwtPayload",
+        "command": "transform.copyJwtPayload",
         "title": "Copy JWT Payload",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.base64Encode",
+        "command": "transform.base64Encode",
         "title": "Base64 Encode",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.base64Decode",
+        "command": "transform.base64Decode",
         "title": "Base64 Decode",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.urlEncode",
+        "command": "transform.urlEncode",
         "title": "URL Encode",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.urlDecode",
+        "command": "transform.urlDecode",
         "title": "URL Decode",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.parseUrl",
+        "command": "transform.parseUrl",
         "title": "Parse URL",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.parseQuery",
+        "command": "transform.parseQuery",
         "title": "Parse Query Parameters",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.timestampToDate",
+        "command": "transform.timestampToDate",
         "title": "Timestamp to Date",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.copyIsoDate",
+        "command": "transform.copyIsoDate",
         "title": "Copy ISO Date",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.dateToTimestamp",
+        "command": "transform.dateToTimestamp",
         "title": "Date to Timestamp",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.generateUuid",
+        "command": "transform.generateUuid",
         "title": "Generate UUID v4",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.validateUuid",
+        "command": "transform.generateUuidV7",
+        "title": "Generate UUID v7",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.generateUlid",
+        "title": "Generate ULID",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.generateNanoid",
+        "title": "Generate Nano ID",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.validateUuid",
         "title": "Validate UUID",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.camelCase",
+        "command": "transform.md5",
+        "title": "MD5 Hash",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.sha1",
+        "title": "SHA-1 Hash",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.sha256",
+        "title": "SHA-256 Hash",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.sha512",
+        "title": "SHA-512 Hash",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.camelCase",
         "title": "camelCase",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.pascalCase",
+        "command": "transform.pascalCase",
         "title": "PascalCase",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.snakeCase",
+        "command": "transform.snakeCase",
         "title": "snake_case",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.kebabCase",
+        "command": "transform.kebabCase",
         "title": "kebab-case",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.constantCase",
+        "command": "transform.constantCase",
         "title": "CONSTANT_CASE",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.lowercase",
+        "command": "transform.titleCase",
+        "title": "Title Case",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.sentenceCase",
+        "title": "Sentence case",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.dotCase",
+        "title": "dot.case",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.pathCase",
+        "title": "path/case",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.slugify",
+        "title": "Slugify",
+        "category": "Transform"
+      },
+      {
+        "command": "transform.lowercase",
         "title": "lowercase",
         "category": "Transform"
       },
       {
-        "command": "selectcraft.uppercase",
+        "command": "transform.uppercase",
         "title": "UPPERCASE",
         "category": "Transform"
       }
     ],
     "keybindings": [
       {
-        "command": "selectcraft.smartAction",
-        "key": "ctrl+shift+d",
-        "mac": "cmd+shift+d",
+        "command": "transform.smartAction",
+        "key": "ctrl+alt+x",
+        "mac": "alt+cmd+x",
         "when": "editorTextFocus"
       }
     ],
     "menus": {
       "editor/context": [
         {
-          "command": "selectcraft.smartAction",
+          "command": "transform.smartAction",
           "group": "9_cutcopypaste@1",
           "when": "editorHasSelection"
         },
         {
-          "submenu": "selectcraft.editorMenu",
+          "submenu": "transform.editorMenu",
           "group": "9_cutcopypaste@2",
           "when": "editorHasSelection"
+        },
+        {
+          "command": "transform.copyJsonPath",
+          "group": "9_cutcopypaste@3",
+          "when": "editorLangId =~ /^jsonc?$/"
         }
       ],
-      "selectcraft.editorMenu": [
+      "transform.editorMenu": [
         {
-          "command": "selectcraft.formatJson",
+          "command": "transform.formatJson",
           "group": "1_json@1"
         },
         {
-          "command": "selectcraft.minifyJson",
+          "command": "transform.minifyJson",
           "group": "1_json@2"
         },
         {
-          "command": "selectcraft.decodeJwt",
+          "command": "transform.decodeJwt",
           "group": "2_encoding@1"
         },
         {
-          "command": "selectcraft.base64Decode",
+          "command": "transform.base64Decode",
           "group": "2_encoding@2"
         }
       ]
@@ -273,7 +434,7 @@
     "configuration": {
       "title": "Transform",
       "properties": {
-        "selectcraft.json.indentation": {
+        "transform.json.indentation": {
           "type": "string",
           "enum": [
             "2",
@@ -283,12 +444,12 @@
           "default": "2",
           "description": "Indentation used for formatted JSON and generated TypeScript."
         },
-        "selectcraft.smartAction.clipboardFallback": {
+        "transform.smartAction.clipboardFallback": {
           "type": "boolean",
           "default": true,
           "description": "Read the clipboard when no text is selected."
         },
-        "selectcraft.defaultResultBehavior": {
+        "transform.defaultResultBehavior": {
           "type": "string",
           "enum": [
             "replace",
@@ -299,7 +460,7 @@
           "default": "replace",
           "description": "How transformation results are delivered. Preview opens a diff and asks before applying the result."
         },
-        "selectcraft.typescript.kind": {
+        "transform.typescript.kind": {
           "type": "string",
           "enum": [
             "interface",
@@ -308,26 +469,31 @@
           "default": "interface",
           "description": "Declaration style used when generating TypeScript from JSON."
         },
-        "selectcraft.typescript.rootName": {
+        "transform.codegen.rootName": {
           "type": "string",
           "default": "Root",
-          "description": "Name for the root declaration generated from JSON."
+          "description": "Name for the root type generated from JSON in TypeScript, Zod, Go, Python, and Rust."
         },
-        "selectcraft.typescript.export": {
+        "transform.typescript.export": {
           "type": "boolean",
           "default": false,
           "description": "Add the export keyword to generated TypeScript declarations."
         },
-        "selectcraft.typescript.optionalProperties": {
+        "transform.codegen.optionalProperties": {
           "type": "boolean",
           "default": false,
-          "description": "Mark every generated TypeScript property as optional."
+          "description": "Mark every generated property as optional in TypeScript, Zod, Go, Python, and Rust."
+        },
+        "transform.hover.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show decoded values when hovering Unix timestamps, JWTs, and Base64 strings."
         }
       }
     },
     "submenus": [
       {
-        "id": "selectcraft.editorMenu",
+        "id": "transform.editorMenu",
         "label": "Transform"
       }
     ]

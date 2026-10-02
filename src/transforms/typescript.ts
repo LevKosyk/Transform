@@ -1,15 +1,8 @@
 import { indentValue, type Indentation, parseJson } from "./json";
+import { typeName, uniqueNames } from "./models";
 import { createShapeOf } from "./shape";
 
 type OutputKind = "interface" | "type";
-function nameFor(key: string): string {
-  const words =
-    key.replace(/([a-z0-9])([A-Z])/g, "$1 $2").match(/[\p{L}\p{N}]+/gu) ?? [];
-  const name = words
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join("");
-  return /^[A-Za-z_$]/.test(name) ? name : `Item${name || "Value"}`;
-}
 function propertyName(key: string): string {
   return /^[A-Za-z_$][\w$]*$/.test(key) ? key : JSON.stringify(key);
 }
@@ -25,25 +18,16 @@ export function jsonToTypescript(
 ): string {
   const root = parseJson(input);
   const definitions: string[] = [];
-  const used = new Set<string>();
-  const nextSuffix = new Map<string, number>();
+  const unique = uniqueNames();
   const shapeNames = new Map<string, string>();
   const shapeOf = createShapeOf((value) =>
     value === null ? "null" : typeof value,
   );
   const indent = indentValue(indentation);
   const pad = typeof indent === "number" ? " ".repeat(indent) : indent;
-  const rootName = nameFor(options.rootName?.trim() || "Root");
+  const rootName = typeName(options.rootName?.trim() || "Root");
   const exported = options.export ? "export " : "";
   const optional = options.optionalProperties ? "?" : "";
-  function unique(base: string): string {
-    let name = base;
-    let index = nextSuffix.get(base) ?? 2;
-    while (used.has(name)) name = `${base}${index++}`;
-    nextSuffix.set(base, index);
-    used.add(name);
-    return name;
-  }
   function typeOf(value: unknown, hint: string): string {
     if (value === null) return "null";
     if (Array.isArray(value)) {
@@ -60,7 +44,7 @@ export function jsonToTypescript(
     const shape = shapeOf(value);
     const existing = shapeNames.get(shape);
     if (existing) return existing;
-    const name = unique(nameFor(hint));
+    const name = unique(typeName(hint));
     shapeNames.set(shape, name);
     const position = definitions.length;
     definitions.push("");

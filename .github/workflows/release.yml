@@ -93,7 +93,7 @@ jobs:
       - name: Package VSIX with public GIF links
         shell: bash
         run: |
-          vsix="selectcraft-${GITHUB_REF_NAME#v}.vsix"
+          vsix="transform-${GITHUB_REF_NAME#v}.vsix"
           npx vsce package \
             --no-dependencies \
             --baseContentUrl "https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_SHA" \
@@ -101,6 +101,23 @@ jobs:
             --out "$vsix"
           test -s "$vsix"
           echo "VSIX=$vsix" >> "$GITHUB_ENV"
+
+      - name: Prepare Open VSX namespace and token
+        shell: bash
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: |
+          if [[ -z "$OVSX_PAT" ]]; then
+            echo '::notice::OVSX_PAT is not configured; skipping Open VSX.'
+            exit 0
+          fi
+          namespace="$(node -p "require('./package.json').publisher")"
+          if ! curl -fsS "https://open-vsx.org/api/$namespace" >/dev/null; then
+            echo "Creating Open VSX namespace $namespace"
+            npx ovsx create-namespace "$namespace"
+          fi
+          npx ovsx verify-pat "$namespace"
+          echo "OPEN_VSX=true" >> "$GITHUB_ENV"
 
       - name: Authenticate to Microsoft Entra ID
         if: ${{ vars.AZURE_CLIENT_ID != '' && vars.AZURE_TENANT_ID != '' && vars.AZURE_SUBSCRIPTION_ID != '' }}
@@ -126,15 +143,11 @@ jobs:
           fi
 
       - name: Publish to Open VSX
+        if: ${{ env.OPEN_VSX == 'true' }}
         shell: bash
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
-        run: |
-          if [[ -z "$OVSX_PAT" ]]; then
-            echo '::notice::OVSX_PAT is not configured; skipping Open VSX.'
-            exit 0
-          fi
-          npx --yes ovsx@1.2.0 publish "$VSIX" --skip-duplicate
+        run: npx ovsx publish --packagePath "$VSIX" --skip-duplicate
 
       - name: Create GitHub Release
         shell: bash

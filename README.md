@@ -1,94 +1,114 @@
-# Transform — JSON, JWT & Text Tools for VS Code
+# Transform — JSON Formatter, JWT Decoder & Developer Tools for VS Code
 
-Format and validate JSON, generate TypeScript and JSON Schema, convert YAML, decode JWT and Base64, and transform URLs, dates, UUIDs, and text. Transform runs locally and works offline.
+Format and validate JSON, decode JWTs, convert JSON to TypeScript, Zod, Go, Python, and Rust, convert YAML, CSV, TOML, and JSON5, and see decoded timestamps, JWTs, and Base64 on hover. One extension replaces a drawer of single-purpose tools, and everything runs **100% offline**.
 
-**VS Code 1.90+** · **MIT License**
+**VS Code 1.90+** · **Cursor, Windsurf & VSCodium via Open VSX** · **Offline** · **No telemetry** · **MIT License**
 
 ## Quick start
 
 1. Select text in an editor.
-2. Press **⌘⇧D** (macOS) or **Ctrl+Shift+D** (Windows/Linux).
-3. Choose a relevant action to transform the selection.
+2. Press **⌥⌘X** (macOS) or **Ctrl+Alt+X** (Windows/Linux).
+3. Pick an action. Transform detects what you selected — JSON, JWT, Base64, YAML, CSV, a timestamp, a URL — and shows only the actions that fit.
 
 ![Select JSON, choose a Transform action, and see formatted JSON in VS Code](assets/smart.gif)
 
-You can also run **Transform: Smart Action** from the Command Palette (**⌘⇧P** / **Ctrl+Shift+P**) or the right-click menu.
+Every action is also in the Command Palette under **Transform:** and in the editor's right-click menu.
 
-## Developer tools
+## Why Transform
 
-| Input  | Actions                                                                                  |
-| ------ | ---------------------------------------------------------------------------------------- |
-| JSON   | Format, minify, sort keys, validate, convert to YAML or TypeScript, generate JSON Schema |
-| YAML   | Convert to formatted JSON                                                                |
-| JWT    | Decode header and payload, inspect token dates, copy payload                             |
-| Base64 | Encode or decode UTF-8 text                                                              |
-| URL    | Encode/decode components, parse URLs and query parameters                                |
-| Dates  | Convert Unix seconds, milliseconds, and ISO 8601                                         |
-| UUID   | Generate UUID v4 or validate a UUID                                                      |
-| Text   | Convert camelCase, PascalCase, snake_case, kebab-case, CONSTANT_CASE, lower/UPPERCASE    |
+- **Smart Action** — one shortcut, the right tools for whatever you selected.
+- **Hover previews** — hover a Unix timestamp, JWT, or Base64 string to read it without selecting anything.
+- **Go to Error** — invalid JSON, YAML, TOML, or JSONC errors jump straight to the line and column.
+- **Every cursor** — text actions apply to each selection, and generators insert a unique ID at every cursor.
+- **Private by design** — no account, no network calls, no telemetry.
 
-All commands are available in the Command Palette. The context menu also includes Format JSON, Minify JSON, Decode JWT, and Base64 Decode.
+## JSON formatter and validator
 
-### JSON to TypeScript
+- **Format**, **minify**, and **sort keys** recursively (array order is kept).
+- **Validate JSON** with the exact line, column, and cause, including comments and trailing commas.
+- **Escape** text as a JSON string, or **unescape** JSON copied from logs, such as `"{\"user\":{\"id\":1}}"`, and format it in one step.
+- With nothing selected, JSON commands use the whole open JSON document.
 
-Generate declarations for nested objects; objects with matching array shapes share a declaration. Choose to replace the selection, preview a diff, open a new editor, or copy the result. Settings control `interface`/`type`, root name, `export`, and optional properties.
+## JSON to TypeScript, Zod, Go, Python, and Rust
+
+Paste a JSON sample and generate types. Nested objects become named types, and objects with the same shape share one type.
+
+```json
+{ "userId": 1, "display-name": "Ada", "tags": ["admin"] }
+```
+
+| Output            | Result                                                                               |
+| ----------------- | ------------------------------------------------------------------------------------ |
+| TypeScript        | `interface Root { userId: number; "display-name": string; tags: string[]; }`         |
+| Zod               | `z.object({ userId: z.number().int(), "display-name": z.string(), ... })` with types |
+| Go                | ``UserID int64 `json:"userId"` `` — aligned like `gofmt`, with Go initialisms        |
+| Python (Pydantic) | `user_id: int = Field(alias="userId")`                                               |
+| Rust (serde)      | `#[serde(rename = "userId")] pub user_id: i64`                                       |
+| JSON Schema       | Draft 2020-12 schema with required keys and array item types                         |
 
 ![Convert selected JSON to TypeScript and open the result in VS Code](assets/typescript.gif)
 
-Optional properties marks every property with `?`; it does not infer optionality from one sample.
+Settings choose `interface` or `type`, the root type name, `export`, and whether every property is optional. Optional properties apply to all languages; Transform does not guess optionality from one sample.
 
-### JSON to JSON Schema
+## JWT decoder
 
-Generate a Draft 2020-12 schema from a JSON sample, including nested properties, required keys, and array item types. Empty arrays have unconstrained `items`. The schema reflects the sample: listed keys are required and additional properties are disallowed. Review it before using it as an API contract.
+Decode the header and payload of a JSON Web Token, see whether it is expired ("Expired 3 hours ago", "Valid (expires in 2 days)"), and read `exp`, `iat`, and `nbf` as dates. **Copy Payload** copies the claims as JSON. Signatures are not verified, so decoded claims are not proof of authenticity.
 
-**Sort JSON Keys** alphabetizes object keys recursively and preserves array order.
+## Hover previews
 
-## Results and privacy
+Hover a value in any file:
 
-- Selected text is replaced by default. Structured results also offer **Preview Diff**, **Open in New Editor**, and **Copy Result**.
-- Set `selectcraft.defaultResultBehavior` to `"preview"` to compare changes and confirm before applying them.
-- With no selection, JSON/YAML commands use the matching open document; other commands can use clipboard fallback and offer copy, insert-at-cursor, or open-in-new-editor options. Disable clipboard fallback in Settings if you prefer.
-- Simple text actions apply independently to multiple selections. Validation leaves the editor unchanged.
-- Transform has no account, telemetry, analytics, or external API calls. It processes selected text or clipboard content only when you invoke a command.
-- JWT decoding does not verify token signatures; decoded claims are not proof of authenticity.
+- **Unix timestamp** (seconds or milliseconds) — UTC, local time, and how long ago.
+- **JWT** — expiry status, header, and payload.
+- **Base64** — the decoded text, when it is readable.
+
+Turn hovers off with `transform.hover.enabled`.
+
+## YAML, CSV, TOML, and JSON5 converter
+
+- **JSON ↔ YAML**, **JSON ↔ CSV**, **JSON ↔ TOML**, and **JSON ↔ JSON5**.
+- **YAML ↔ JSONC that keeps comments**, so annotated config files survive the round trip.
+- CSV conversion detects commas, semicolons, or tabs, reads numbers and booleans, and flattens nested objects into `address.city` columns.
+
+## JSON path
+
+- **Copy JSON Path at Cursor** copies a path such as `$.users[0].email` (also in the right-click menu for JSON files).
+- **Query JSON Path…** runs a query such as `$.users[*].email` or `$..id`. Supports `.key`, `["key"]`, `[0]`, `[-1]`, `[*]`, `.*`, and `..key`.
+
+## Encoders, dates, IDs, hashes, and case
+
+| Tool       | Actions                                                                                                                                  |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Base64     | Encode and decode UTF-8 text                                                                                                             |
+| URL        | Encode and decode, parse a URL, parse query parameters                                                                                   |
+| Timestamps | Convert Unix seconds, milliseconds, and ISO 8601                                                                                         |
+| IDs        | Generate UUID v4, UUID v7, ULID, and Nano ID at every cursor; validate a UUID                                                            |
+| Hash       | MD5, SHA-1, SHA-256, and SHA-512                                                                                                         |
+| Case       | camelCase, PascalCase, snake_case, kebab-case, CONSTANT_CASE, Title Case, Sentence case, dot.case, path/case, slug, lowercase, UPPERCASE |
+
+## Results
+
+The selection is replaced by default. Structured results such as generated types also offer **Preview Diff**, **Open in New Editor**, and **Copy Result**. Set `transform.defaultResultBehavior` to `"preview"` to review every change before it is applied. With no selection, Transform can read the clipboard and insert, copy, or open the result.
 
 ## Settings
 
-Search for **Transform** in VS Code Settings, or add values to `settings.json`:
+| Setting                                   | Default       | Purpose                                                          |
+| ----------------------------------------- | ------------- | ---------------------------------------------------------------- |
+| `transform.json.indentation`              | `"2"`         | Indentation for JSON, TypeScript, and Zod: `"2"`, `"4"`, `"tab"` |
+| `transform.defaultResultBehavior`         | `"replace"`   | `"replace"`, `"copy"`, `"ask"`, or `"preview"`                   |
+| `transform.smartAction.clipboardFallback` | `true`        | Read the clipboard when no text is selected                      |
+| `transform.hover.enabled`                 | `true`        | Show decoded values on hover                                     |
+| `transform.codegen.rootName`              | `"Root"`      | Root type name for TypeScript, Zod, Go, Python, and Rust         |
+| `transform.codegen.optionalProperties`    | `false`       | Mark every generated property optional                           |
+| `transform.typescript.kind`               | `"interface"` | TypeScript `interface` or `type`                                 |
+| `transform.typescript.export`             | `false`       | Export generated TypeScript declarations                         |
 
-| Setting                                     | Default       | Purpose                                               |
-| ------------------------------------------- | ------------- | ----------------------------------------------------- |
-| `selectcraft.json.indentation`              | `"2"`         | JSON/TypeScript indentation: `"2"`, `"4"`, or `"tab"` |
-| `selectcraft.smartAction.clipboardFallback` | `true`        | Read clipboard when no text is selected               |
-| `selectcraft.defaultResultBehavior`         | `"replace"`   | `"replace"`, `"copy"`, `"ask"`, or `"preview"`        |
-| `selectcraft.typescript.kind`               | `"interface"` | TypeScript declaration style                          |
-| `selectcraft.typescript.rootName`           | `"Root"`      | Root declaration name                                 |
-| `selectcraft.typescript.export`             | `false`       | Export generated declarations                         |
-| `selectcraft.typescript.optionalProperties` | `false`       | Mark all generated properties optional                |
+## Privacy
 
-## Install locally
+Transform has no account, telemetry, analytics, or network calls. It reads the selection, document, or clipboard only when you run a command, and hover previews only decode the value under the cursor. After regular use it may ask once for a rating; **Later** and **Don't Ask Again** snooze or stop it.
 
-Requires **Node.js 20+**. Build and install the VSIX:
+## Feedback and support
 
-```sh
-npm ci
-npm run package
-```
+Found a bug or want a tool added? Open an issue on [GitHub](https://github.com/LevKosyk/Transform/issues). If Transform saves you time, a rating on the Marketplace helps other developers find it.
 
-In VS Code, run **Extensions: Install from VSIX...** and select `selectcraft-1.0.0.vsix`. For development, open the project and press **F5** to launch an Extension Development Host.
-
-## Development and releases
-
-```sh
-npm test
-npm run test:integration
-npm run lint
-npm run format:check
-npm run build
-```
-
-Integration tests cover Smart Action, diff confirmation, TypeScript settings, JSON Schema, cursor insertion, multiple selections, and clipboard delivery. The [release workflow](.github/workflows/release.yml) tests, packages, publishes version tags to the VS Code Marketplace, and attaches the VSIX to a GitHub Release. Configure Marketplace credentials in GitHub Actions before the first release; no credentials belong in the repository.
-
-## Support and license
-
-Report bugs or request features in [GitHub Issues](https://github.com/LevKosyk/Transform/issues). Licensed under [MIT](LICENSE). See [changelog.md](changelog.md) for release history.
+See the [changelog](changelog.md) for release notes, [CONTRIBUTING.md](CONTRIBUTING.md) to build from source, and [ThirdPartyNotices.txt](ThirdPartyNotices.txt) for bundled libraries. Licensed under [MIT](LICENSE).

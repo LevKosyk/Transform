@@ -12,9 +12,18 @@ import {
 import { validateJson, type Indentation } from "./transforms/json";
 import { validateUuid } from "./transforms/uuid";
 import { dateFormats } from "./transforms/dates";
-import type { ResultMode, TransformResult } from "./types";
+import { formatPath, jsonPathAt } from "./transforms/jsonc";
+import { describeToken, HOVER_TOKEN_PATTERN } from "./services/hover";
+import {
+  applyRatingChoice,
+  recordUse,
+  reviewUrl,
+  shouldAskForRating,
+  type RatingChoice,
+  type RatingState,
+} from "./services/rating";
+import type { InputType, ResultMode, TransformResult } from "./types";
 
-type DocumentLanguage = "json" | "yaml" | "jsonOrYaml";
 type ResultBehavior = "replace" | "copy" | "ask" | "preview";
 
 interface InputContext {
@@ -30,46 +39,51 @@ interface InputContext {
 interface InputOptions {
   allowEmpty?: boolean;
   silent?: boolean;
-  useDocument?: DocumentLanguage;
+  useDocument?: readonly string[];
 }
 
 const NO_INPUT_MESSAGE =
   "Transform: Select text or copy text to the clipboard first.";
 const RESULT_PLACEHOLDER = "Where should Transform put the result?";
 
-const jsonInputActions = new Set<ActionId>([
-  "formatJson",
-  "minifyJson",
-  "sortJsonKeys",
-  "jsonToYaml",
-  "jsonToTypescript",
-  "jsonToSchema",
-]);
-const jsonDocumentActions = new Set<ActionId>([
-  ...jsonInputActions,
-  "validateJson",
-]);
+const SMART_DOCUMENTS = ["json", "jsonc", "json5", "yaml", "toml", "csv"];
 const copyOnlyActions = new Set<ActionId>(["copyJwtPayload", "copyIsoDate"]);
 
+const inputLabels: Record<InputType, string> = {
+  json: "JSON",
+  escapedJson: "Escaped JSON",
+  json5: "JSON5 / JSONC",
+  yaml: "YAML",
+  toml: "TOML",
+  csv: "CSV",
+  jwt: "JWT",
+  base64: "Base64",
+  timestamp: "Timestamp",
+  date: "Date",
+  url: "URL",
+  uuid: "UUID",
+  text: "Text",
+  unknown: "Generate",
+};
+
+interface ErrorAction {
+  title: string;
+  run: () => unknown;
+}
+
+interface TextLocation {
+  line: number;
+  column: number;
+}
+
+const RATING_KEY = "transform.rating";
+
 let output: vscode.OutputChannel;
+let extensionContext: vscode.ExtensionContext;
+let lastJsonPath = "$";
 
 function settings(): vscode.WorkspaceConfiguration {
-  return vscode.workspace.getConfiguration("selectcraft");
-}
-
-function documentLanguageFor(id: ActionId): DocumentLanguage | undefined {
-  if (jsonDocumentActions.has(id)) return "json";
-  if (id === "yamlToJson") return "yaml";
-  return undefined;
-}
-
-function matchesLanguage(
-  languageId: string,
-  language: DocumentLanguage,
-): boolean {
-  return language === "jsonOrYaml"
-    ? languageId === "json" || languageId === "yaml"
-    : languageId === language;
+  return vscode.workspace.getConfiguration("transform");
 }
 
 function logError(label: string, error: unknown): void {
@@ -78,11 +92,137 @@ function logError(label: string, error: unknown): void {
   output.appendLine(`[${new Date().toISOString()}] ${label}: ${details}`);
 }
 
+const showDetails: ErrorAction = {
+  title: "Show Details",
+  run: () => output.show(true),
+};
+
+function showError(message: string, actions: ErrorAction[] = []): void {
+  void vscode.window
+    .showErrorMessage(message, ...actions.map(({ title }) => title))
+    .then((choice) => actions.find(({ title }) => title === choice)?.run());
+}
+
+function errorLocation(error: unknown, text: string): TextLocation | undefined {
+  if (error && typeof error === "object") {
+    const { line, column, lineNumber, columnNumber } = error as Record<
+      string,
+      unknown
+    >;
+    const errorLine = line ?? lineNumber;
+    const errorColumn = column ?? columnNumber;
+    if (typeof errorLine === "number" && typeof errorColumn === "number")
+      return { line: errorLine, column: errorColumn };
+  }
+  const message = errorMessage(error);
+  const lineColumn = /line (\d+),? column (\d+)/i.exec(message);
+  if (lineColumn)
+    return { line: Number(lineColumn[1]), column: Number(lineColumn[2]) };
+  const position = /position (\d+)/i.exec(message);
+  if (!position) {
+    if (!(error instanceof SyntaxError)) return undefined;
+    const result = validateJson(text);
+    return !result.valid && result.line && result.column
+      ? { line: result.line, column: result.column }
+      : undefined;
+  }
+  const lines = text.slice(0, Number(position[1])).split(/\r\n|\n|\r/);
+  return { line: lines.length, column: lines.at(-1)!.length + 1 };
+}
+
+function goToError(
+  document: vscode.TextDocument,
+  start: vscode.Position,
+  location: TextLocation | undefined,
+): ErrorAction[] {
+  if (!location) return [];
+  return [
+    {
+      title: "Go to Error",
+      run: async () => {
+        const position =
+          location.line === 1
+            ? start.translate(0, location.column - 1)
+            : new vscode.Position(
+                start.line + location.line - 1,
+                location.column - 1,
+              );
+        const editor = await vscode.window.showTextDocument(document);
+        const target = document.validatePosition(position);
+        editor.selection = new vscode.Selection(target, target);
+        editor.revealRange(
+          new vscode.Range(target, target),
+          vscode.TextEditorRevealType.InCenterIfOutsideViewport,
+        );
+      },
+    },
+  ];
+}
+
+function inputErrorActions(input: InputContext, error: unknown): ErrorAction[] {
+  const singleInput = (input.selectedTexts?.length ?? 1) <= 1;
+  if (!input.editor || !input.selection || !singleInput) return [];
+  return goToError(
+    input.editor.document,
+    input.selection.start,
+    errorLocation(error, input.text),
+  );
+}
+
+async function askForRating(state: RatingState): Promise<void> {
+  const now = Date.now();
+  await extensionContext.globalState.update(
+    RATING_KEY,
+    applyRatingChoice(state, "later", now),
+  );
+  const choices: Record<string, RatingChoice> = {
+    "Rate Transform": "rate",
+    Later: "later",
+    "Don't Ask Again": "never",
+  };
+  const picked = await vscode.window.showInformationMessage(
+    "Enjoying Transform? A quick rating helps other developers find it.",
+    ...Object.keys(choices),
+  );
+  const choice = picked ? choices[picked] : undefined;
+  await extensionContext.globalState.update(
+    RATING_KEY,
+    applyRatingChoice(state, choice, now),
+  );
+  if (choice === "rate")
+    await vscode.env.openExternal(
+      vscode.Uri.parse(
+        reviewUrl(vscode.env.appName, extensionContext.extension.id),
+      ),
+    );
+}
+
+function recordSuccess(): void {
+  if (extensionContext.extensionMode === vscode.ExtensionMode.Test) return;
+  const now = Date.now();
+  const state = recordUse(
+    extensionContext.globalState.get<RatingState>(RATING_KEY),
+    now,
+  );
+  void extensionContext.globalState.update(RATING_KEY, state);
+  if (shouldAskForRating(state, now)) void askForRating(state);
+}
+
 async function copyResult(text: string): Promise<void> {
   await vscode.env.clipboard.writeText(text);
   vscode.window.showInformationMessage(
     "Transform: Result copied to clipboard.",
   );
+}
+
+function emptyInput(editor?: vscode.TextEditor): InputContext {
+  return {
+    text: "",
+    editor,
+    selections: editor?.selections,
+    selectedTexts: editor?.selections.map(() => ""),
+    source: "empty",
+  };
 }
 
 async function getInput({
@@ -106,11 +246,7 @@ async function getInput({
       source: "selection",
     };
   }
-  if (
-    editor &&
-    useDocument &&
-    matchesLanguage(editor.document.languageId, useDocument)
-  ) {
+  if (editor && useDocument?.includes(editor.document.languageId)) {
     const { document } = editor;
     const text = document.getText();
     if (text.trim()) {
@@ -129,7 +265,7 @@ async function getInput({
       };
     }
   }
-  if (allowEmpty) return { text: "", editor, source: "empty" };
+  if (allowEmpty) return emptyInput(editor);
   if (settings().get<boolean>("smartAction.clipboardFallback", true)) {
     const text = await vscode.env.clipboard.readText();
     if (text.trim()) return { text, editor, source: "clipboard" };
@@ -138,11 +274,21 @@ async function getInput({
   return undefined;
 }
 
-function friendlyError(id: ActionId, error: unknown): string {
-  const message = error instanceof Error ? error.message : "Unexpected error.";
-  return jsonInputActions.has(id)
-    ? `Transform: Selected text is not valid JSON. ${message}`
-    : `Transform: ${actionById(id).label} failed. ${message}`;
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Unexpected error.";
+}
+
+function isJsonError(id: ActionId, error: unknown): boolean {
+  return !!actionById(id).jsonInput && error instanceof SyntaxError;
+}
+
+function friendlyError(id: ActionId, error: unknown, text = ""): string {
+  if (!isJsonError(id, error))
+    return `Transform: ${actionById(id).label} failed. ${errorMessage(error)}`;
+  const result = validateJson(text);
+  if (result.valid || !result.line)
+    return `Transform: Selected text is not valid JSON. ${errorMessage(error)}`;
+  return `Transform: Invalid JSON at line ${result.line}, column ${result.column}. ${result.message}`;
 }
 
 async function pickMode(
@@ -253,7 +399,8 @@ async function deliver(
   }
   const cursor = editor.selection.active;
   const ranges =
-    mode === "replace" && context.selections?.length
+    (mode === "replace" || context.source === "empty") &&
+    context.selections?.length
       ? context.selections
       : [
           mode === "replace" && context.selection
@@ -270,7 +417,9 @@ async function deliver(
     );
   });
   if (!success)
-    vscode.window.showErrorMessage("Transform: Could not update the editor.");
+    showError(
+      "Transform: Could not update the editor. The document may be read-only or changed during the edit.",
+    );
 }
 
 function readExecuteOptions(): ExecuteOptions {
@@ -281,10 +430,10 @@ function readExecuteOptions(): ExecuteOptions {
       "typescript.kind",
       "interface",
     ),
-    typescriptRootName: config.get<string>("typescript.rootName", "Root"),
+    rootName: config.get<string>("codegen.rootName", "Root"),
     typescriptExport: config.get<boolean>("typescript.export", false),
-    typescriptOptionalProperties: config.get<boolean>(
-      "typescript.optionalProperties",
+    optionalProperties: config.get<boolean>(
+      "codegen.optionalProperties",
       false,
     ),
   };
@@ -295,7 +444,7 @@ async function pickDateFormat(text: string): Promise<DateFormat | undefined> {
   try {
     formats = dateFormats(text);
   } catch (error) {
-    vscode.window.showWarningMessage(friendlyError("timestampToDate", error));
+    showError(friendlyError("timestampToDate", error));
     return undefined;
   }
   const choice = await vscode.window.showQuickPick(
@@ -313,7 +462,8 @@ async function pickDateFormat(text: string): Promise<DateFormat | undefined> {
   return choice?.format;
 }
 
-function showValidation(id: ActionId, text: string): boolean {
+function showValidation(id: ActionId, input: InputContext): boolean {
+  const { text } = input;
   if (id === "validateJson") {
     const result = validateJson(text);
     if (result.valid)
@@ -322,8 +472,14 @@ function showValidation(id: ActionId, text: string): boolean {
       const location = result.line
         ? ` at line ${result.line}, column ${result.column}`
         : "";
-      vscode.window.showWarningMessage(
+      showError(
         `Transform: JSON is invalid${location}. ${result.message}`,
+        input.editor && input.selection && result.line && result.column
+          ? goToError(input.editor.document, input.selection.start, {
+              line: result.line,
+              column: result.column,
+            })
+          : [],
       );
     }
     return true;
@@ -343,14 +499,24 @@ async function runAction(id: ActionId, context?: InputContext): Promise<void> {
     context ??
     (await getInput({
       allowEmpty: action.noInput,
-      useDocument: documentLanguageFor(id),
+      useDocument: action.documents,
     }));
-  if (!input || showValidation(id, input.text)) return;
+  if (!input || showValidation(id, input)) return;
   const options = readExecuteOptions();
   if (id === "timestampToDate") {
     const dateFormat = await pickDateFormat(input.text);
     if (!dateFormat) return;
     options.dateFormat = dateFormat;
+  }
+  if (id === "queryJson") {
+    const jsonPath = await vscode.window.showInputBox({
+      title: "Transform: Query JSON Path",
+      prompt: 'Supports .key, ["key"], [0], [-1], [*], .* and ..key',
+      value: lastJsonPath,
+      placeHolder: "$.users[*].email",
+    });
+    if (!jsonPath) return;
+    options.jsonPath = lastJsonPath = jsonPath;
   }
   try {
     const { selectedTexts } = input;
@@ -367,15 +533,20 @@ async function runAction(id: ActionId, context?: InputContext): Promise<void> {
     const mode = copyOnlyActions.has(id)
       ? "copy"
       : await chooseMode(input, !!action.structured);
-    if (mode) await deliver(result, input, mode, multipleResults);
+    if (!mode) return;
+    await deliver(result, input, mode, multipleResults);
+    recordSuccess();
   } catch (error) {
     logError(id, error);
-    vscode.window.showWarningMessage(friendlyError(id, error));
+    showError(friendlyError(id, error, input.text), [
+      ...inputErrorActions(input, error),
+      showDetails,
+    ]);
   }
 }
 
 async function smartAction(): Promise<void> {
-  const input = await getInput({ silent: true, useDocument: "jsonOrYaml" });
+  const input = await getInput({ silent: true, useDocument: SMART_DOCUMENTS });
   if (!input) {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
@@ -383,43 +554,111 @@ async function smartAction(): Promise<void> {
       return;
     }
     const choice = await vscode.window.showQuickPick(
-      [{ label: "Generate UUID v4", id: "generateUuid" as const }],
+      relevantActions("unknown").map(({ label, id }) => ({ label, id })),
       { placeHolder: "Transform" },
     );
-    if (choice)
-      await runAction(choice.id, { text: "", editor, source: "empty" });
+    if (choice) await runAction(choice.id, emptyInput(editor));
     return;
   }
   const type = detectInput(input.text);
   const choice = await vscode.window.showQuickPick(
     relevantActions(type).map(({ label, id }) => ({ label, id })),
     {
-      placeHolder: `Transform · ${type === "text" ? "Text" : type.toUpperCase()}`,
+      placeHolder: `Transform · ${inputLabels[type]}`,
     },
   );
   if (choice) await runAction(choice.id, input);
 }
+
+async function copyJsonPath(): Promise<void> {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    vscode.window.showInformationMessage(
+      "Transform: Open a JSON document and place the cursor on a value.",
+    );
+    return;
+  }
+  const { document } = editor;
+  let path: ReturnType<typeof jsonPathAt>;
+  try {
+    path = jsonPathAt(
+      document.getText(),
+      document.offsetAt(editor.selection.active),
+    );
+  } catch (error) {
+    showError(
+      `Transform: Could not read JSON at the cursor. ${errorMessage(error)}`,
+      goToError(
+        document,
+        new vscode.Position(0, 0),
+        errorLocation(error, document.getText()),
+      ),
+    );
+    return;
+  }
+  if (!path) {
+    vscode.window.showWarningMessage(
+      "Transform: Place the cursor inside a JSON value.",
+    );
+    return;
+  }
+  const text = formatPath(path);
+  await vscode.env.clipboard.writeText(text);
+  vscode.window.showInformationMessage(`Transform: Copied ${text}`);
+  recordSuccess();
+}
+
+const hoverProvider: vscode.HoverProvider = {
+  provideHover(document, position) {
+    if (!settings().get<boolean>("hover.enabled", true)) return undefined;
+    const range = document.getWordRangeAtPosition(
+      position,
+      HOVER_TOKEN_PATTERN,
+    );
+    const markdown = range && describeToken(document.getText(range));
+    return markdown
+      ? new vscode.Hover(new vscode.MarkdownString(markdown), range)
+      : undefined;
+  },
+};
 
 async function safelyRun(task: () => Promise<void>): Promise<void> {
   try {
     await task();
   } catch (error) {
     logError("Unexpected error", error);
-    vscode.window.showErrorMessage(
-      "Transform: An unexpected error occurred. See the Transform output channel.",
-    );
+    showError(`Transform: Something went wrong. ${errorMessage(error)}`, [
+      showDetails,
+      {
+        title: "Report Issue",
+        run: () =>
+          vscode.env.openExternal(
+            vscode.Uri.parse(
+              "https://github.com/LevKosyk/Transform/issues/new",
+            ),
+          ),
+      },
+    ]);
   }
 }
 
 export function activate(context: vscode.ExtensionContext): void {
+  extensionContext = context;
   output = vscode.window.createOutputChannel("Transform");
   context.subscriptions.push(
     output,
-    vscode.commands.registerCommand("selectcraft.smartAction", () =>
+    vscode.commands.registerCommand("transform.smartAction", () =>
       safelyRun(smartAction),
     ),
+    vscode.commands.registerCommand("transform.copyJsonPath", () =>
+      safelyRun(copyJsonPath),
+    ),
+    vscode.languages.registerHoverProvider(
+      [{ scheme: "file" }, { scheme: "untitled" }],
+      hoverProvider,
+    ),
     ...actions.map(({ id }) =>
-      vscode.commands.registerCommand(`selectcraft.${id}`, () =>
+      vscode.commands.registerCommand(`transform.${id}`, () =>
         safelyRun(() => runAction(id)),
       ),
     ),

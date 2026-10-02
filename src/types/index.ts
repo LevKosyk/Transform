@@ -1,5 +1,9 @@
 export type InputType =
   | "json"
+  | "escapedJson"
+  | "json5"
+  | "toml"
+  | "csv"
   | "yaml"
   | "jwt"
   | "base64"

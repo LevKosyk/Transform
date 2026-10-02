@@ -11,7 +11,18 @@ const MILLISECONDS_PATTERN = /^-?\d{13}$/;
 const ISO_PATTERN =
   /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
 
+const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
+  ["year", 31_536_000],
+  ["month", 2_592_000],
+  ["week", 604_800],
+  ["day", 86_400],
+  ["hour", 3_600],
+  ["minute", 60],
+  ["second", 1],
+];
+
 let localFormatter: Intl.DateTimeFormat | undefined;
+let relativeFormatter: Intl.RelativeTimeFormat | undefined;
 
 function kindOf(text: string): DateInputKind | undefined {
   if (SECONDS_PATTERN.test(text)) return "seconds";
@@ -52,4 +63,16 @@ export function dateFormats(input: string): DateFormats {
     seconds: String(Math.floor(time / 1000)),
     milliseconds: String(time),
   };
+}
+
+export function relativeTime(target: number, now = Date.now()): string {
+  const seconds = Math.round((target - now) / 1000);
+  if (!seconds) return "now";
+  const [unit, size] = RELATIVE_UNITS.find(
+    ([, length]) => Math.abs(seconds) >= length,
+  ) ?? ["second", 1];
+  relativeFormatter ??= new Intl.RelativeTimeFormat("en", {
+    numeric: "always",
+  });
+  return relativeFormatter.format(Math.round(seconds / size), unit);
 }

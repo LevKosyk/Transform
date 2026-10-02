@@ -1,9 +1,11 @@
-import { getYaml } from "../transforms/yamlRuntime";
+import { getYaml } from "../transforms/runtime";
 import type { InputType } from "../types";
 import { base64Decode, isHttpUrl } from "../transforms/encoding";
 import { detectDateKind } from "../transforms/dates";
 import { validateUuid } from "../transforms/uuid";
 import { decodeJwt } from "../transforms/jwt";
+import { isEscapedJson } from "../transforms/json";
+import { isCsv, isJson5, isToml } from "../transforms/formats";
 
 type Detector = { type: InputType; test: (text: string) => boolean };
 
@@ -36,6 +38,8 @@ const detectors: Detector[] = [
     test: (text) =>
       (text[0] === "{" || text[0] === "[") && succeeds(() => JSON.parse(text)),
   },
+  { type: "escapedJson", test: isEscapedJson },
+  { type: "json5", test: isJson5 },
   {
     type: "url",
     test: (text) =>
@@ -50,6 +54,7 @@ const detectors: Detector[] = [
     },
   },
   { type: "date", test: (text) => detectDateKind(text) === "iso" },
+  { type: "toml", test: isToml },
   {
     type: "yaml",
     test: (text) =>
@@ -64,6 +69,7 @@ const detectors: Detector[] = [
         );
       }),
   },
+  { type: "csv", test: isCsv },
   {
     type: "base64",
     test: (text) =>

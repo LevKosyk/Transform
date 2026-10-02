@@ -6,21 +6,34 @@ import {
   validateJson,
   jsonToYaml,
   yamlToJson,
+  escapeJson,
+  unescapeJson,
 } from "../src/transforms/json";
 import { jsonToTypescript } from "../src/transforms/typescript";
 import { jsonToSchema } from "../src/transforms/jsonSchema";
-import { decodeJwt } from "../src/transforms/jwt";
+import { decodeJwt, formatJwt, jwtStatus } from "../src/transforms/jwt";
 import {
   base64Encode,
   base64Decode,
   parseUrl,
   parseQuery,
 } from "../src/transforms/encoding";
-import { detectDateKind, dateFormats } from "../src/transforms/dates";
-import { generateUuid, validateUuid } from "../src/transforms/uuid";
+import {
+  detectDateKind,
+  dateFormats,
+  relativeTime,
+} from "../src/transforms/dates";
+import {
+  generateNanoid,
+  generateUlid,
+  generateUuid,
+  generateUuidV7,
+  validateUuid,
+} from "../src/transforms/uuid";
+import { hash } from "../src/transforms/hash";
 import { convertCase } from "../src/transforms/cases";
 import { detectInput } from "../src/detection/detectInput";
-import { relevantActions } from "../src/services/actions";
+import { executeAction, relevantActions } from "../src/services/actions";
 
 describe("JSON and YAML", () => {
   it("formats, minifies and validates JSON", () => {
@@ -51,6 +64,22 @@ describe("JSON and YAML", () => {
       { type: "string" },
     ]);
     expect(schema.properties.empty.items).toEqual({});
+  });
+  it("escapes and unescapes JSON strings", () => {
+    expect(escapeJson('{\n  "a": 1\n}')).toBe('"{\\"a\\":1}"');
+    expect(escapeJson('say "hi"')).toBe('"say \\"hi\\""');
+    expect(unescapeJson('"{\\"user\\":{\\"id\\":1}}"')).toEqual({
+      text: '{\n  "user": {\n    "id": 1\n  }\n}',
+      json: true,
+    });
+    expect(unescapeJson('{\\"a\\":[1]}', "4").text).toBe(
+      '{\n    "a": [\n        1\n    ]\n}',
+    );
+    expect(unescapeJson("line\\nbreak")).toEqual({
+      text: "line\nbreak",
+      json: false,
+    });
+    expect(() => unescapeJson('"broken\\"')).toThrow();
   });
   it("converts between JSON and YAML", () => {
     const yaml = jsonToYaml('{"server":{"port":3000}}');
@@ -115,6 +144,28 @@ describe("encoding and dates", () => {
     expect(decodeJwt(token).payload.sub).toBe("42");
     expect(decodeJwt(token).timestamps.exp).toContain("2026");
   });
+  it("reports JWT expiry status relative to now", () => {
+    const now = Date.UTC(2026, 0, 1);
+    const seconds = now / 1000;
+    expect(jwtStatus({ exp: seconds - 3 * 3600 }, now)).toBe(
+      "Expired 3 hours ago",
+    );
+    expect(jwtStatus({ exp: seconds + 2 * 86400 }, now)).toBe(
+      "Valid (expires in 2 days)",
+    );
+    expect(jwtStatus({ nbf: seconds + 300, exp: seconds + 900 }, now)).toBe(
+      "Not valid yet (starts in 5 minutes)",
+    );
+    expect(jwtStatus({}, now)).toBe("Valid (no exp claim, never expires)");
+    const token = `${Buffer.from('{"alg":"HS256"}').toString("base64url")}.${Buffer.from(`{"exp":${seconds - 60}}`).toString("base64url")}.sig`;
+    const output = formatJwt(token, now);
+    expect(output.startsWith("STATUS: Expired 1 minute ago")).toBe(true);
+    expect(output).toContain("2025-12-31T23:59:00.000Z (1 minute ago)");
+  });
+  it("formats relative times", () => {
+    expect(relativeTime(10_000, 0)).toBe("in 10 seconds");
+    expect(relativeTime(0, 400 * 86_400_000)).toBe("1 year ago");
+  });
   it("round trips UTF-8 Base64 and rejects invalid input", () => {
     expect(base64Decode(base64Encode("Привіт 👋"))).toBe("Привіт 👋");
     expect(() => base64Decode("%%%%")).toThrow();
@@ -139,6 +190,43 @@ describe("UUID, strings and detection", () => {
   it("validates generated UUIDs", () => {
     expect(validateUuid(generateUuid())).toBe(true);
     expect(validateUuid("not-a-uuid")).toBe(false);
+  });
+  it("generates UUID v7, ULID and Nano ID", () => {
+    const time = Date.UTC(2026, 9, 3);
+    const v7 = generateUuidV7(time);
+    expect(validateUuid(v7)).toBe(true);
+    expect(v7[14]).toBe("7");
+    expect(parseInt(v7.replace(/-/g, "").slice(0, 12), 16)).toBe(time);
+    expect(generateUuidV7()).not.toBe(generateUuidV7());
+    const ulid = generateUlid(time);
+    expect(ulid).toMatch(/^[0-9A-HJKMNP-TV-Z]{26}$/);
+    expect(ulid.slice(0, 10)).toBe(generateUlid(time).slice(0, 10));
+    expect(generateUlid(0).slice(0, 10)).toBe("0000000000");
+    expect(generateNanoid()).toMatch(/^[\w-]{21}$/);
+  });
+  it("hashes UTF-8 text", () => {
+    expect(hash("hello", "md5")).toBe("5d41402abc4b2a76b9719d911017c592");
+    expect(hash("hello", "sha1")).toBe(
+      "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d",
+    );
+    expect(hash("hello", "sha256")).toBe(
+      "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+    );
+    expect(hash("hello", "sha512")).toHaveLength(128);
+    expect(executeAction("sha256", "hello").text).toBe(hash("hello", "sha256"));
+  });
+  it("converts extended case styles", () => {
+    expect(convertCase("userProfileSettings", "title")).toBe(
+      "User Profile Settings",
+    );
+    expect(convertCase("USER_PROFILE_SETTINGS", "sentence")).toBe(
+      "User profile settings",
+    );
+    expect(convertCase("user profile", "dot")).toBe("user.profile");
+    expect(convertCase("UserProfile", "path")).toBe("user/profile");
+    expect(convertCase("Héllo, Wörld! Ça va?", "slug")).toBe(
+      "hello-world-ca-va",
+    );
   });
   it("converts case styles", () => {
     expect(convertCase("user profile settings", "camel")).toBe(
@@ -165,6 +253,10 @@ describe("UUID, strings and detection", () => {
     expect(detectInput("hello world")).toBe("text");
     expect(detectInput("developer")).toBe("text");
     expect(detectInput("")).toBe("unknown");
+    expect(detectInput('"{\\"a\\":1}"')).toBe("escapedJson");
+    expect(detectInput('{\\"a\\":1}')).toBe("escapedJson");
+    expect(detectInput('say "hi"')).toBe("text");
     expect(relevantActions("json")[0].id).toBe("formatJson");
+    expect(relevantActions("escapedJson")[0].id).toBe("unescapeJson");
   });
 });

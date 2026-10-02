@@ -1,5 +1,6 @@
+import { parseJsonc } from "./jsonc";
 import { compareKeys } from "./shape";
-import { getYaml } from "./yamlRuntime";
+import { getYaml } from "./runtime";
 
 export type Indentation = "2" | "4" | "tab";
 export function indentValue(value: Indentation): string | number {
@@ -57,26 +58,72 @@ export function validateJson(
     parseJson(input);
     return { valid: true };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Invalid JSON";
-    const lineColumn = /line (\d+) column (\d+)/i.exec(message);
-    if (lineColumn)
-      return {
-        valid: false,
-        message,
-        line: Number(lineColumn[1]),
-        column: Number(lineColumn[2]),
-      };
-    const match = /position (\d+)/i.exec(message);
-    if (match) {
-      const prefix = input.slice(0, Number(match[1]));
-      const lines = prefix.split(/\r\n|\n|\r/);
-      return {
-        valid: false,
-        message,
-        line: lines.length,
-        column: lines.at(-1)!.length + 1,
-      };
+    let message = error instanceof Error ? error.message : "Invalid JSON";
+    try {
+      parseJsonc(input, true);
+    } catch (strictError) {
+      if (strictError instanceof Error) message = strictError.message;
     }
-    return { valid: false, message };
+    const lineColumn = /line (\d+),? column (\d+)/i.exec(message);
+    return lineColumn
+      ? {
+          valid: false,
+          message: message.replace(/ at line \d+, column \d+\.$/, "."),
+          line: Number(lineColumn[1]),
+          column: Number(lineColumn[2]),
+        }
+      : { valid: false, message };
+  }
+}
+function parseStructured(input: string): unknown {
+  const trimmed = input.trim();
+  if (trimmed[0] !== "{" && trimmed[0] !== "[") return undefined;
+  try {
+    return parseJson(trimmed);
+  } catch {
+    return undefined;
+  }
+}
+export function escapeJson(input: string): string {
+  const structured = parseStructured(input);
+  return JSON.stringify(
+    structured === undefined ? input : JSON.stringify(structured),
+  );
+}
+export function unescapeJsonString(input: string): string {
+  const trimmed = input.trim();
+  const quoted =
+    trimmed.length > 1 && trimmed.startsWith('"') && trimmed.endsWith('"')
+      ? trimmed
+      : `"${trimmed}"`;
+  let value: unknown;
+  try {
+    value = parseJson(quoted);
+  } catch {
+    throw new Error("Text is not a valid JSON string literal.");
+  }
+  if (typeof value !== "string")
+    throw new Error("Text is not a valid JSON string literal.");
+  return value;
+}
+export function unescapeJson(
+  input: string,
+  indentation: Indentation = "2",
+): { text: string; json: boolean } {
+  const text = unescapeJsonString(input);
+  const structured = parseStructured(text);
+  return structured === undefined
+    ? { text, json: false }
+    : {
+        text: JSON.stringify(structured, null, indentValue(indentation)),
+        json: true,
+      };
+}
+export function isEscapedJson(input: string): boolean {
+  if (!input.includes('\\"')) return false;
+  try {
+    return unescapeJson(input).json;
+  } catch {
+    return false;
   }
 }

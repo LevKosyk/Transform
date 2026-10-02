@@ -33,6 +33,51 @@ function interceptQuickPicks(
   };
 }
 
+function interceptInputBox(value: string): () => void {
+  const previous = Object.getOwnPropertyDescriptor(
+    vscode.window,
+    "showInputBox",
+  );
+  Object.defineProperty(vscode.window, "showInputBox", {
+    configurable: true,
+    value: async () => value,
+  });
+  return () => {
+    if (previous)
+      Object.defineProperty(vscode.window, "showInputBox", previous);
+    else
+      delete (vscode.window as unknown as Record<string, unknown>)[
+        "showInputBox"
+      ];
+  };
+}
+
+function interceptErrorMessage(
+  choose: (message: string) => string | undefined,
+): () => void {
+  const previous = Object.getOwnPropertyDescriptor(
+    vscode.window,
+    "showErrorMessage",
+  );
+  Object.defineProperty(vscode.window, "showErrorMessage", {
+    configurable: true,
+    value: async (message: string) => choose(message),
+  });
+  return () => {
+    if (previous)
+      Object.defineProperty(vscode.window, "showErrorMessage", previous);
+    else
+      delete (vscode.window as unknown as Record<string, unknown>)[
+        "showErrorMessage"
+      ];
+  };
+}
+
+async function waitFor(condition: () => boolean): Promise<void> {
+  for (let attempt = 0; attempt < 50 && !condition(); attempt++)
+    await new Promise((resolve) => setTimeout(resolve, 20));
+}
+
 function chooseLabel(label: string) {
   return (items: readonly unknown[]) => {
     const choice = items.find((item) => {
@@ -50,13 +95,13 @@ function chooseLabel(label: string) {
 }
 
 export async function run(): Promise<void> {
-  const configuration = vscode.workspace.getConfiguration("selectcraft");
+  const configuration = vscode.workspace.getConfiguration("transform");
   const configurableSettings = [
     "defaultResultBehavior",
     "typescript.kind",
-    "typescript.rootName",
+    "codegen.rootName",
     "typescript.export",
-    "typescript.optionalProperties",
+    "codegen.optionalProperties",
   ] as const;
   const originalSettings = new Map(
     configurableSettings.map((key) => [
@@ -74,7 +119,7 @@ export async function run(): Promise<void> {
       vscode.ConfigurationTarget.Global,
     );
     const jsonEditor = await selectedEditor('{"name":"Lev","active":true}');
-    await vscode.commands.executeCommand("selectcraft.formatJson");
+    await vscode.commands.executeCommand("transform.formatJson");
     assert.equal(
       jsonEditor.document.getText(),
       '{\n  "name": "Lev",\n  "active": true\n}',
@@ -92,7 +137,7 @@ export async function run(): Promise<void> {
       wholeJsonDocument.positionAt(0),
     );
     await vscode.env.clipboard.writeText("clipboard must not be used");
-    await vscode.commands.executeCommand("selectcraft.formatJson");
+    await vscode.commands.executeCommand("transform.formatJson");
     assert.equal(
       wholeJsonDocument.getText(),
       '{\n  "active": true,\n  "count": 2\n}',
@@ -102,7 +147,7 @@ export async function run(): Promise<void> {
     const smartEditor = await selectedEditor('{"count":2}');
     restoreQuickPicks();
     const restoreSmartPick = interceptQuickPicks(chooseLabel("Format JSON"));
-    await vscode.commands.executeCommand("selectcraft.smartAction");
+    await vscode.commands.executeCommand("transform.smartAction");
     assert.equal(
       smartEditor.document.getText(),
       '{\n  "count": 2\n}',
@@ -117,7 +162,7 @@ export async function run(): Promise<void> {
     );
     const restorePreviewPick = interceptQuickPicks(chooseLabel("Apply Result"));
     const previewEditor = await selectedEditor("preview me");
-    await vscode.commands.executeCommand("selectcraft.uppercase");
+    await vscode.commands.executeCommand("transform.uppercase");
     assert.equal(
       previewEditor.document.getText(),
       "PREVIEW ME",
@@ -136,7 +181,7 @@ export async function run(): Promise<void> {
       vscode.ConfigurationTarget.Global,
     );
     await configuration.update(
-      "typescript.rootName",
+      "codegen.rootName",
       "ApiResponse",
       vscode.ConfigurationTarget.Global,
     );
@@ -146,7 +191,7 @@ export async function run(): Promise<void> {
       vscode.ConfigurationTarget.Global,
     );
     await configuration.update(
-      "typescript.optionalProperties",
+      "codegen.optionalProperties",
       true,
       vscode.ConfigurationTarget.Global,
     );
@@ -154,7 +199,7 @@ export async function run(): Promise<void> {
     const restoreOpenPick = interceptQuickPicks(
       chooseLabel("Open in New Editor"),
     );
-    await vscode.commands.executeCommand("selectcraft.jsonToTypescript");
+    await vscode.commands.executeCommand("transform.jsonToTypescript");
     assert.match(
       vscode.window.activeTextEditor?.document.getText() ?? "",
       /export type ApiResponse = \{\n {2}id\?: number;\n {2}name\?: string;/,
@@ -167,7 +212,7 @@ export async function run(): Promise<void> {
     const restoreSchemaPick = interceptQuickPicks(
       chooseLabel("Open in New Editor"),
     );
-    await vscode.commands.executeCommand("selectcraft.jsonToSchema");
+    await vscode.commands.executeCommand("transform.jsonToSchema");
     const schemaOutput =
       vscode.window.activeTextEditor?.document.getText() ?? "";
     assert.match(schemaOutput, /json-schema\.org\/draft\/2020-12\/schema/);
@@ -192,7 +237,7 @@ export async function run(): Promise<void> {
     const restoreInsertPick = interceptQuickPicks(
       chooseLabel("Insert Result at Cursor"),
     );
-    await vscode.commands.executeCommand("selectcraft.uppercase");
+    await vscode.commands.executeCommand("transform.uppercase");
     assert.equal(
       insertionEditor.document.getText(),
       "start MIDDLEend",
@@ -211,12 +256,126 @@ export async function run(): Promise<void> {
         multiEditor.document.positionAt(7),
       ),
     ];
-    await vscode.commands.executeCommand("selectcraft.uppercase");
+    await vscode.commands.executeCommand("transform.uppercase");
     assert.equal(
       multiEditor.document.getText(),
       "CAT DOG",
       "Transformations should apply independently to every selection",
     );
+
+    const cursorsDocument = await vscode.workspace.openTextDocument({
+      content: "a\nb\nc",
+    });
+    const cursorsEditor = await vscode.window.showTextDocument(cursorsDocument);
+    cursorsEditor.selections = [0, 2, 4].map(
+      (offset) =>
+        new vscode.Selection(
+          cursorsDocument.positionAt(offset + 1),
+          cursorsDocument.positionAt(offset + 1),
+        ),
+    );
+    await vscode.commands.executeCommand("transform.generateUuidV7");
+    const generated = cursorsEditor.document
+      .getText()
+      .split("\n")
+      .map((line) => line.slice(1));
+    assert.ok(
+      generated.every((id) => /^[0-9a-f-]{36}$/.test(id)),
+      `Every cursor should receive a UUID: ${generated.join(", ")}`,
+    );
+    assert.equal(
+      new Set(generated).size,
+      3,
+      "Each cursor should receive a different UUID",
+    );
+
+    const hoverDocument = await vscode.workspace.openTextDocument({
+      content: "const createdAt = 1767225600;",
+    });
+    await vscode.window.showTextDocument(hoverDocument);
+    const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
+      "vscode.executeHoverProvider",
+      hoverDocument.uri,
+      hoverDocument.positionAt(22),
+    );
+    const hoverText = hovers
+      .flatMap((hover) => hover.contents)
+      .map((content) => (typeof content === "string" ? content : content.value))
+      .join("\n");
+    assert.match(
+      hoverText,
+      /Transform · Unix seconds[\s\S]*2026-01-01T00:00:00\.000Z/,
+      "Hovering a Unix timestamp should show the decoded date",
+    );
+
+    const pathDocument = await vscode.workspace.openTextDocument({
+      language: "json",
+      content: '{"users":[{"email":"a@x.io"},{"email":"l@x.io"}]}',
+    });
+    const pathEditor = await vscode.window.showTextDocument(pathDocument);
+    const emailOffset = pathDocument.getText().indexOf("l@x.io");
+    pathEditor.selection = new vscode.Selection(
+      pathDocument.positionAt(emailOffset),
+      pathDocument.positionAt(emailOffset),
+    );
+    await vscode.commands.executeCommand("transform.copyJsonPath");
+    assert.equal(
+      await vscode.env.clipboard.readText(),
+      "$.users[1].email",
+      "Copy JSON Path should copy the path at the cursor",
+    );
+
+    const restoreInputBox = interceptInputBox("$.users[*].email");
+    const restoreQueryPick = interceptQuickPicks(
+      chooseLabel("Open in New Editor"),
+    );
+    await vscode.commands.executeCommand("transform.queryJson");
+    assert.deepEqual(
+      JSON.parse(vscode.window.activeTextEditor?.document.getText() ?? ""),
+      ["a@x.io", "l@x.io"],
+      "Query JSON Path should run the entered query against the JSON document",
+    );
+    restoreQueryPick();
+    restoreInputBox();
+
+    const brokenText = '{\n  "a": 1,\n  "b": \n}';
+    const brokenEditor = await selectedEditor(brokenText);
+    let errorMessage = "";
+    const restoreErrorPopup = interceptErrorMessage((message) => {
+      errorMessage = message;
+      return "Go to Error";
+    });
+    await vscode.commands.executeCommand("transform.formatJson");
+    await waitFor(() => brokenEditor.selection.isEmpty);
+    restoreErrorPopup();
+    assert.match(
+      errorMessage,
+      /Invalid JSON at line 4, column 1\. Unexpected "\}"/,
+      "Invalid JSON should show an error popup with the location",
+    );
+    assert.deepEqual(
+      [
+        brokenEditor.selection.active.line,
+        brokenEditor.selection.active.character,
+      ],
+      [3, 0],
+      "Go to Error should move the cursor to the invalid token",
+    );
+    assert.equal(brokenEditor.document.getText(), brokenText);
+
+    await selectedEditor('{"id":1}');
+    const restoreZodPick = interceptQuickPicks(
+      chooseLabel("Open in New Editor"),
+    );
+    await vscode.commands.executeCommand("transform.jsonToZod");
+    const zodEditor = vscode.window.activeTextEditor;
+    assert.equal(zodEditor?.document.languageId, "typescript");
+    assert.match(
+      zodEditor?.document.getText() ?? "",
+      /export const ApiResponseSchema = z\.object\(\{\n {2}id: z\.number\(\)\.int\(\)\.optional\(\),/,
+      "Zod generation should honor the root name and optional settings",
+    );
+    restoreZodPick();
 
     await configuration.update(
       "defaultResultBehavior",
@@ -225,7 +384,7 @@ export async function run(): Promise<void> {
     );
     const textEditor = await selectedEditor("hello world");
     await vscode.env.clipboard.writeText("integration-test-sentinel");
-    await vscode.commands.executeCommand("selectcraft.uppercase");
+    await vscode.commands.executeCommand("transform.uppercase");
     assert.equal(
       await vscode.env.clipboard.readText(),
       "HELLO WORLD",
@@ -238,7 +397,7 @@ export async function run(): Promise<void> {
     );
 
     console.log(
-      "Transform integration tests passed (smart action, preview, TypeScript settings, JSON Schema, insertion, multiple selections, and clipboard).",
+      "Transform integration tests passed (smart action, preview, TypeScript settings, JSON Schema, insertion, multiple selections, multi-cursor generation, hover, JSON paths, Zod, error popups, and clipboard).",
     );
     if (process.env.TRANSFORM_TEST_RESULT)
       await writeFile(process.env.TRANSFORM_TEST_RESULT, "passed\n");

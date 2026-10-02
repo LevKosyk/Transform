@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
 const temporary = await mkdtemp(
-  resolve(process.platform === "darwin" ? "/tmp" : tmpdir(), "sc-test-"),
+  resolve(process.platform === "darwin" ? "/tmp" : tmpdir(), "transform-test-"),
 );
 const resultPath = resolve(temporary, "result.txt");
 const macExecutable =
