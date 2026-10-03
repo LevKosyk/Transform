@@ -10,7 +10,7 @@ Format and validate JSON, decode JWTs, convert JSON to TypeScript, Zod, Go, Pyth
 2. Press **⌥⌘X** (macOS) or **Ctrl+Alt+X** (Windows/Linux).
 3. Pick an action. Transform detects what you selected — JSON, JWT, Base64, YAML, CSV, a timestamp, a URL — and shows only the actions that fit.
 
-![Select JSON, choose a Transform action, and see formatted JSON in VS Code](assets/smart.gif)
+![Format JSON in VS Code: select minified JSON, press the Transform shortcut, and choose Format JSON](assets/smart.gif)
 
 Every action is also in the Command Palette under **Transform:** and in the editor's right-click menu.
 
@@ -21,6 +21,18 @@ Every action is also in the Command Palette under **Transform:** and in the edit
 - **Go to Error** — invalid JSON, YAML, TOML, or JSONC errors jump straight to the line and column.
 - **Every cursor** — text actions apply to each selection, and generators insert a unique ID at every cursor.
 - **Private by design** — no account, no network calls, no telemetry.
+
+## Hover previews
+
+Hover a value in any file:
+
+- **Unix timestamp** (seconds or milliseconds) — UTC, local time, and how long ago.
+- **JWT** — expiry status, header, and payload.
+- **Base64** — the decoded text, when it is readable.
+
+![Hover a Unix timestamp and a JWT in VS Code to see the decoded date, expiry status, header, and payload](assets/hover.gif)
+
+Turn hovers off with `transform.hover.enabled`.
 
 ## JSON formatter and validator
 
@@ -46,23 +58,13 @@ Paste a JSON sample and generate types. Nested objects become named types, and o
 | Rust (serde)      | `#[serde(rename = "userId")] pub user_id: i64`                                       |
 | JSON Schema       | Draft 2020-12 schema with required keys and array item types                         |
 
-![Convert selected JSON to TypeScript and open the result in VS Code](assets/typescript.gif)
+![Convert JSON to a Zod schema in VS Code with Transform and open the generated TypeScript in a new editor](assets/codegen.gif)
 
 Settings choose `interface` or `type`, the root type name, `export`, and whether every property is optional. Optional properties apply to all languages; Transform does not guess optionality from one sample.
 
 ## JWT decoder
 
 Decode the header and payload of a JSON Web Token, see whether it is expired ("Expired 3 hours ago", "Valid (expires in 2 days)"), and read `exp`, `iat`, and `nbf` as dates. **Copy Payload** copies the claims as JSON. Signatures are not verified, so decoded claims are not proof of authenticity.
-
-## Hover previews
-
-Hover a value in any file:
-
-- **Unix timestamp** (seconds or milliseconds) — UTC, local time, and how long ago.
-- **JWT** — expiry status, header, and payload.
-- **Base64** — the decoded text, when it is readable.
-
-Turn hovers off with `transform.hover.enabled`.
 
 ## YAML, CSV, TOML, and JSON5 converter
 
@@ -106,6 +108,23 @@ The selection is replaced by default. Structured results such as generated types
 ## Privacy
 
 Transform has no account, telemetry, analytics, or network calls. It reads the selection, document, or clipboard only when you run a command, and hover previews only decode the value under the cursor. After regular use it may ask once for a rating; **Later** and **Don't Ask Again** snooze or stop it.
+
+## FAQ
+
+**How do I format JSON in VS Code?**
+Select the JSON, or open a `.json` file with nothing selected, and run **Transform: Format JSON** — or press **⌥⌘X** / **Ctrl+Alt+X** and pick **Format JSON**. Minify and sort keys work the same way.
+
+**How do I decode a JWT in VS Code?**
+Hover the token to see its header, payload, and expiry status, or select it and run **Transform: Decode JWT**. Decoding happens locally; the token never leaves your machine.
+
+**How do I convert JSON to TypeScript, Zod, Go, Python, or Rust?**
+Select a JSON sample, press **⌥⌘X** / **Ctrl+Alt+X**, and pick the language — or run **Transform: JSON to TypeScript**, **JSON to Zod Schema**, **JSON to Go Structs**, **JSON to Python (Pydantic)**, or **JSON to Rust (serde)** from the Command Palette.
+
+**How do I convert a Unix timestamp to a date?**
+Hover the timestamp, or select it and run **Transform: Timestamp to Date**. Seconds and milliseconds are both detected.
+
+**Does Transform send my data anywhere?**
+No. There are no network calls and no telemetry, so it is safe for tokens, credentials, and production data.
 
 ## Feedback and support
 

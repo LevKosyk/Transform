@@ -7,7 +7,7 @@ async function selectedEditor(text: string): Promise<vscode.TextEditor> {
   const editor = await vscode.window.showTextDocument(document);
   editor.selection = new vscode.Selection(
     document.positionAt(0),
-    document.positionAt(text.length),
+    document.lineAt(document.lineCount - 1).range.end,
   );
   return editor;
 }
@@ -78,6 +78,10 @@ async function waitFor(condition: () => boolean): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 20));
 }
 
+function textOf(document: vscode.TextDocument | undefined): string {
+  return document?.getText().replace(/\r\n/g, "\n") ?? "";
+}
+
 function chooseLabel(label: string) {
   return (items: readonly unknown[]) => {
     const choice = items.find((item) => {
@@ -121,7 +125,7 @@ export async function run(): Promise<void> {
     const jsonEditor = await selectedEditor('{"name":"Lev","active":true}');
     await vscode.commands.executeCommand("transform.formatJson");
     assert.equal(
-      jsonEditor.document.getText(),
+      textOf(jsonEditor.document),
       '{\n  "name": "Lev",\n  "active": true\n}',
       "Format JSON should replace the selected text in the editor",
     );
@@ -139,7 +143,7 @@ export async function run(): Promise<void> {
     await vscode.env.clipboard.writeText("clipboard must not be used");
     await vscode.commands.executeCommand("transform.formatJson");
     assert.equal(
-      wholeJsonDocument.getText(),
+      textOf(wholeJsonDocument),
       '{\n  "active": true,\n  "count": 2\n}',
       "JSON commands should process the whole JSON document when nothing is selected",
     );
@@ -149,7 +153,7 @@ export async function run(): Promise<void> {
     const restoreSmartPick = interceptQuickPicks(chooseLabel("Format JSON"));
     await vscode.commands.executeCommand("transform.smartAction");
     assert.equal(
-      smartEditor.document.getText(),
+      textOf(smartEditor.document),
       '{\n  "count": 2\n}',
       "Smart Action should detect JSON and run the selected action",
     );
@@ -164,7 +168,7 @@ export async function run(): Promise<void> {
     const previewEditor = await selectedEditor("preview me");
     await vscode.commands.executeCommand("transform.uppercase");
     assert.equal(
-      previewEditor.document.getText(),
+      textOf(previewEditor.document),
       "PREVIEW ME",
       "Preview mode should apply the result after confirmation",
     );
@@ -201,11 +205,11 @@ export async function run(): Promise<void> {
     );
     await vscode.commands.executeCommand("transform.jsonToTypescript");
     assert.match(
-      vscode.window.activeTextEditor?.document.getText() ?? "",
+      textOf(vscode.window.activeTextEditor?.document),
       /export type ApiResponse = \{\n {2}id\?: number;\n {2}name\?: string;/,
       "TypeScript settings should control kind, root name, exports, and optional properties",
     );
-    assert.equal(typescriptEditor.document.getText(), '{"id":1,"name":"Ada"}');
+    assert.equal(textOf(typescriptEditor.document), '{"id":1,"name":"Ada"}');
     restoreOpenPick();
 
     const schemaEditor = await selectedEditor('{"enabled":true,"items":[1,2]}');
@@ -213,13 +217,12 @@ export async function run(): Promise<void> {
       chooseLabel("Open in New Editor"),
     );
     await vscode.commands.executeCommand("transform.jsonToSchema");
-    const schemaOutput =
-      vscode.window.activeTextEditor?.document.getText() ?? "";
+    const schemaOutput = textOf(vscode.window.activeTextEditor?.document);
     assert.match(schemaOutput, /json-schema\.org\/draft\/2020-12\/schema/);
     const schema = JSON.parse(schemaOutput);
     assert.deepEqual(schema.properties.enabled, { type: "boolean" });
     assert.equal(
-      schemaEditor.document.getText(),
+      textOf(schemaEditor.document),
       '{"enabled":true,"items":[1,2]}',
     );
     restoreSchemaPick();
@@ -239,7 +242,7 @@ export async function run(): Promise<void> {
     );
     await vscode.commands.executeCommand("transform.uppercase");
     assert.equal(
-      insertionEditor.document.getText(),
+      textOf(insertionEditor.document),
       "start MIDDLEend",
       "Insert Result should insert clipboard transformations at the cursor",
     );
@@ -258,7 +261,7 @@ export async function run(): Promise<void> {
     ];
     await vscode.commands.executeCommand("transform.uppercase");
     assert.equal(
-      multiEditor.document.getText(),
+      textOf(multiEditor.document),
       "CAT DOG",
       "Transformations should apply independently to every selection",
     );
@@ -267,16 +270,12 @@ export async function run(): Promise<void> {
       content: "a\nb\nc",
     });
     const cursorsEditor = await vscode.window.showTextDocument(cursorsDocument);
-    cursorsEditor.selections = [0, 2, 4].map(
-      (offset) =>
-        new vscode.Selection(
-          cursorsDocument.positionAt(offset + 1),
-          cursorsDocument.positionAt(offset + 1),
-        ),
-    );
+    cursorsEditor.selections = [0, 1, 2].map((line) => {
+      const end = cursorsDocument.lineAt(line).range.end;
+      return new vscode.Selection(end, end);
+    });
     await vscode.commands.executeCommand("transform.generateUuidV7");
-    const generated = cursorsEditor.document
-      .getText()
+    const generated = textOf(cursorsEditor.document)
       .split("\n")
       .map((line) => line.slice(1));
     assert.ok(
@@ -331,7 +330,7 @@ export async function run(): Promise<void> {
     );
     await vscode.commands.executeCommand("transform.queryJson");
     assert.deepEqual(
-      JSON.parse(vscode.window.activeTextEditor?.document.getText() ?? ""),
+      JSON.parse(textOf(vscode.window.activeTextEditor?.document)),
       ["a@x.io", "l@x.io"],
       "Query JSON Path should run the entered query against the JSON document",
     );
@@ -361,7 +360,7 @@ export async function run(): Promise<void> {
       [3, 0],
       "Go to Error should move the cursor to the invalid token",
     );
-    assert.equal(brokenEditor.document.getText(), brokenText);
+    assert.equal(textOf(brokenEditor.document), brokenText);
 
     await selectedEditor('{"id":1}');
     const restoreZodPick = interceptQuickPicks(
@@ -371,7 +370,7 @@ export async function run(): Promise<void> {
     const zodEditor = vscode.window.activeTextEditor;
     assert.equal(zodEditor?.document.languageId, "typescript");
     assert.match(
-      zodEditor?.document.getText() ?? "",
+      textOf(zodEditor?.document),
       /export const ApiResponseSchema = z\.object\(\{\n {2}id: z\.number\(\)\.int\(\)\.optional\(\),/,
       "Zod generation should honor the root name and optional settings",
     );
@@ -391,7 +390,7 @@ export async function run(): Promise<void> {
       "UPPERCASE should copy the transformed selection",
     );
     assert.equal(
-      textEditor.document.getText(),
+      textOf(textEditor.document),
       "hello world",
       "Copy mode should leave the editor unchanged",
     );
