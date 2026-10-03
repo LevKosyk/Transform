@@ -11,7 +11,7 @@ npm ci
 npm run package
 ```
 
-In VS Code, run **Extensions: Install from VSIX...** and select `transform-<version>.vsix`. For development, open the project and press **F5** to launch an Extension Development Host.
+In VS Code, run **Extensions: Install from VSIX...** and select `transform-tools-<version>.vsix`. For development, open the project and press **F5** to launch an Extension Development Host.
 
 ## Checks
 

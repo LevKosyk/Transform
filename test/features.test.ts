@@ -332,11 +332,11 @@ describe("rating prompt", () => {
     ).toBe(false);
   });
   it("links to the right marketplace", () => {
-    expect(reviewUrl("Visual Studio Code", "levkosyk.transform")).toBe(
-      "https://marketplace.visualstudio.com/items?itemName=levkosyk.transform&ssr=false#review-details",
+    expect(reviewUrl("Visual Studio Code", "levkosyk.transform-tools")).toBe(
+      "https://marketplace.visualstudio.com/items?itemName=levkosyk.transform-tools&ssr=false#review-details",
     );
-    expect(reviewUrl("Cursor", "levkosyk.transform")).toBe(
-      "https://open-vsx.org/extension/levkosyk/transform/reviews",
+    expect(reviewUrl("Cursor", "levkosyk.transform-tools")).toBe(
+      "https://open-vsx.org/extension/levkosyk/transform-tools/reviews",
     );
   });
 });

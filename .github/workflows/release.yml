@@ -93,7 +93,7 @@ jobs:
       - name: Package VSIX with public GIF links
         shell: bash
         run: |
-          vsix="transform-${GITHUB_REF_NAME#v}.vsix"
+          vsix="$(node -p "require('./package.json').name")-${GITHUB_REF_NAME#v}.vsix"
           npx vsce package \
             --no-dependencies \
             --baseContentUrl "https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_SHA" \

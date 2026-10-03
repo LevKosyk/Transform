@@ -1,5 +1,5 @@
 {
-  "name": "transform",
+  "name": "transform-tools",
   "displayName": "Transform — JSON Formatter, JWT Decoder & Dev Tools",
   "description": "JSON formatter & validator, JWT decoder, Base64 and timestamp hovers, JSON to TypeScript, Zod, Go, Python & Rust, YAML/CSV/TOML converter, UUID, hash and case tools. 100% offline.",
   "version": "1.0.0",
