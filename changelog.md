@@ -2,6 +2,10 @@
 
 All notable changes to Transform are documented here.
 
+## 1.0.1
+
+- The rating prompt now appears after 5 successful actions and one day of use, instead of 10 actions and three days. **Later** and **Don't Ask Again** work as before.
+
 ## 1.0.0
 
 Initial release. Everything runs locally and works offline.

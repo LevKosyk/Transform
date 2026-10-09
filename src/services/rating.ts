@@ -1,7 +1,7 @@
 const DAY = 86_400_000;
 
-export const RATING_MIN_USES = 10;
-export const RATING_MIN_AGE = 3 * DAY;
+export const RATING_MIN_USES = 5;
+export const RATING_MIN_AGE = DAY;
 export const RATING_SNOOZE = 14 * DAY;
 
 export interface RatingState {

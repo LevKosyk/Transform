@@ -315,20 +315,20 @@ describe("rating prompt", () => {
     return state!;
   };
   it("asks only after enough uses and days", () => {
-    expect(shouldAskForRating(use(9, 0), 10 * day)).toBe(false);
-    expect(shouldAskForRating(use(10, 0), 2 * day)).toBe(false);
-    expect(shouldAskForRating(use(10, 0), 3 * day)).toBe(true);
+    expect(shouldAskForRating(use(4, 0), 10 * day)).toBe(false);
+    expect(shouldAskForRating(use(5, 0), day - 1)).toBe(false);
+    expect(shouldAskForRating(use(5, 0), day)).toBe(true);
   });
   it("snoozes on later or dismiss and stops after rating or never", () => {
-    const state = use(10, 0);
-    const later = applyRatingChoice(state, undefined, 3 * day);
-    expect(shouldAskForRating(later, 10 * day)).toBe(false);
-    expect(shouldAskForRating(later, 17 * day)).toBe(true);
+    const state = use(5, 0);
+    const later = applyRatingChoice(state, undefined, day);
+    expect(shouldAskForRating(later, 14 * day)).toBe(false);
+    expect(shouldAskForRating(later, 15 * day)).toBe(true);
     expect(
-      shouldAskForRating(applyRatingChoice(state, "rate", 3 * day), 99 * day),
+      shouldAskForRating(applyRatingChoice(state, "rate", day), 99 * day),
     ).toBe(false);
     expect(
-      shouldAskForRating(applyRatingChoice(state, "never", 3 * day), 99 * day),
+      shouldAskForRating(applyRatingChoice(state, "never", day), 99 * day),
     ).toBe(false);
   });
   it("links to the right marketplace", () => {
